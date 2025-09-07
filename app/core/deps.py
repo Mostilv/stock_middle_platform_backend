@@ -3,6 +3,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.security import verify_token
 from app.services.user_service import UserService
 from app.models.user import User
+from app.services.role_service import RoleService
+from typing import List
 
 security = HTTPBearer()
 
@@ -52,3 +54,35 @@ async def get_current_superuser(
             detail="权限不足"
         )
     return current_user
+
+
+def require_roles(required_roles: List[str]):
+    async def dependency(current_user: User = Depends(get_current_active_user)) -> User:
+        user_roles = set(current_user.roles or [])
+        if not set(required_roles).issubset(user_roles):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="需要角色: " + ",".join(required_roles)
+            )
+        return current_user
+    return dependency
+
+
+def require_permissions(required_permissions: List[str]):
+    async def dependency(
+        current_user: User = Depends(get_current_active_user),
+        role_service: RoleService = Depends()
+    ) -> User:
+        # 合并用户直接权限与角色权限
+        effective_permissions = set(current_user.permissions or [])
+        for role_name in current_user.roles or []:
+            role = await role_service.get_role_by_name(role_name)
+            if role:
+                effective_permissions.update(role.permissions or [])
+        if not set(required_permissions).issubset(effective_permissions):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="需要权限: " + ",".join(required_permissions)
+            )
+        return current_user
+    return dependency

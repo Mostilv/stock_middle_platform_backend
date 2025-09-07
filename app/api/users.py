@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from app.core.deps import get_current_active_user, get_current_superuser
 from app.services.user_service import UserService
 from app.models.user import User, UserUpdate
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/users", tags=["用户管理"])
 
@@ -66,3 +67,51 @@ async def delete_user(
             detail="用户不存在"
         )
     return {"message": "用户删除成功"}
+
+
+class RolesUpdate(BaseModel):
+    roles: list[str]
+
+
+class PermissionsUpdate(BaseModel):
+    permissions: list[str]
+
+
+@router.post("/{user_id}/roles", response_model=User)
+async def add_user_roles(
+    user_id: str,
+    body: RolesUpdate,
+    current_user: User = Depends(get_current_superuser),
+    user_service: UserService = Depends()
+):
+    return await user_service.add_roles(user_id, body.roles)
+
+
+@router.delete("/{user_id}/roles", response_model=User)
+async def remove_user_roles(
+    user_id: str,
+    body: RolesUpdate,
+    current_user: User = Depends(get_current_superuser),
+    user_service: UserService = Depends()
+):
+    return await user_service.remove_roles(user_id, body.roles)
+
+
+@router.post("/{user_id}/permissions", response_model=User)
+async def add_user_permissions(
+    user_id: str,
+    body: PermissionsUpdate,
+    current_user: User = Depends(get_current_superuser),
+    user_service: UserService = Depends()
+):
+    return await user_service.add_permissions(user_id, body.permissions)
+
+
+@router.delete("/{user_id}/permissions", response_model=User)
+async def remove_user_permissions(
+    user_id: str,
+    body: PermissionsUpdate,
+    current_user: User = Depends(get_current_superuser),
+    user_service: UserService = Depends()
+):
+    return await user_service.remove_permissions(user_id, body.permissions)

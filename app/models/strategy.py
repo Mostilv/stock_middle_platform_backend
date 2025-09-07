@@ -1,27 +1,23 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
-from bson import ObjectId
-from app.models.user import PyObjectId
 
 
 # 策略模型
 class StrategyInDB(BaseModel):
-    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
-    name: str = Field(..., index=True)
-    description: Optional[str] = None
-    user_id: str = Field(..., index=True)  # 策略创建者ID
-    is_public: bool = False  # 是否为公开策略
-    is_active: bool = True
-    strategy_type: str = Field(..., index=True)  # 策略类型
-    parameters: Dict[str, Any] = {}  # 策略参数
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    id: Optional[int] = Field(default=None, description="策略ID")
+    name: str = Field(..., description="策略名称")
+    description: Optional[str] = Field(None, description="策略描述")
+    user_id: int = Field(..., description="策略创建者ID")
+    is_public: bool = Field(False, description="是否为公开策略")
+    is_active: bool = Field(True, description="是否激活")
+    strategy_type: str = Field(..., description="策略类型")
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="策略参数")
+    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
+    updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
     
     class Config:
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
+        orm_mode = True
 
 
 # 策略创建模型
@@ -45,10 +41,10 @@ class StrategyUpdate(BaseModel):
 
 # 策略响应模型
 class Strategy(BaseModel):
-    id: str
+    id: int
     name: str
     description: Optional[str] = None
-    user_id: str
+    user_id: int
     is_public: bool
     is_active: bool
     strategy_type: str
@@ -57,36 +53,34 @@ class Strategy(BaseModel):
     updated_at: datetime
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 # 策略订阅模型
 class StrategySubscription(BaseModel):
-    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
-    user_id: str = Field(..., index=True)
-    strategy_id: str = Field(..., index=True)
-    is_active: bool = True
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    id: Optional[int] = Field(default=None, description="订阅ID")
+    user_id: int = Field(..., description="用户ID")
+    strategy_id: int = Field(..., description="策略ID")
+    is_active: bool = Field(True, description="是否激活")
+    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
     
     class Config:
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
+        orm_mode = True
 
 
 # 策略订阅创建模型
 class StrategySubscriptionCreate(BaseModel):
-    strategy_id: str
+    strategy_id: int
 
 
 # 策略订阅响应模型
 class StrategySubscriptionResponse(BaseModel):
-    id: str
-    user_id: str
-    strategy_id: str
+    id: int
+    user_id: int
+    strategy_id: int
     is_active: bool
     created_at: datetime
     strategy: Optional[Strategy] = None
 
     class Config:
-        from_attributes = True
+        orm_mode = True

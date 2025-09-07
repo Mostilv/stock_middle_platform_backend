@@ -1,41 +1,25 @@
 from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, Field
-from bson import ObjectId
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
 
 
-class PyObjectId(ObjectId):
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v):
-        if not ObjectId.is_valid(v):
-            raise ValueError("Invalid ObjectId")
-        return ObjectId(v)
-
-    @classmethod
-    def __modify_schema__(cls, field_schema):
-        field_schema.update(type="string")
-
-
-# MongoDB用户模型
-class UserInDB(BaseModel):
-    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
-    username: str = Field(..., unique=True, index=True)
-    email: str = Field(..., unique=True, index=True)
-    hashed_password: str
-    full_name: Optional[str] = None
-    is_active: bool = True
-    is_superuser: bool = False
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+# MySQL用户模型
+class UserInDB(Base):
+    __tablename__ = "users"
     
-    class Config:
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, index=True, nullable=False)
+    email = Column(String(100), unique=True, index=True, nullable=False)
+    hashed_password = Column(String(255), nullable=False)
+    full_name = Column(String(100), nullable=True)
+    is_active = Column(Boolean, default=True)
+    is_superuser = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
 # 用户创建模型
@@ -57,7 +41,7 @@ class UserUpdate(BaseModel):
 
 # 用户响应模型
 class User(BaseModel):
-    id: str
+    id: int
     username: str
     email: str
     full_name: Optional[str] = None
@@ -65,10 +49,9 @@ class User(BaseModel):
     is_superuser: bool
     created_at: datetime
     updated_at: datetime
-    hashed_password: Optional[str] = None
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 # 用户登录模型

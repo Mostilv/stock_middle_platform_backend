@@ -1,6 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from app.core.deps import get_current_active_user, get_current_superuser
+from app.core.deps import get_current_active_user, get_current_superuser, require_permissions
 from app.services.strategy_service import StrategyService
 from app.models.strategy import (
     Strategy, StrategyCreate, StrategyUpdate, 
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/strategies", tags=["策略管理"])
 @router.post("/", response_model=Strategy)
 async def create_strategy(
     strategy_create: StrategyCreate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permissions(["strategies:write"])),
     strategy_service: StrategyService = Depends()
 ):
     """创建策略"""
@@ -26,7 +26,7 @@ async def create_strategy(
 async def get_my_strategies(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permissions(["strategies:read"])),
     strategy_service: StrategyService = Depends()
 ):
     """获取我的策略列表"""
@@ -64,7 +64,7 @@ async def get_strategy(
 async def update_strategy(
     strategy_id: str,
     strategy_update: StrategyUpdate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permissions(["strategies:write"])),
     strategy_service: StrategyService = Depends()
 ):
     """更新策略"""
@@ -80,7 +80,7 @@ async def update_strategy(
 @router.delete("/{strategy_id}")
 async def delete_strategy(
     strategy_id: str,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permissions(["strategies:write"])),
     strategy_service: StrategyService = Depends()
 ):
     """删除策略"""
@@ -96,7 +96,7 @@ async def delete_strategy(
 @router.post("/{strategy_id}/subscribe", response_model=StrategySubscriptionResponse)
 async def subscribe_strategy(
     strategy_id: str,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permissions(["strategies:read"])),
     strategy_service: StrategyService = Depends()
 ):
     """订阅策略"""
@@ -116,7 +116,7 @@ async def subscribe_strategy(
 @router.delete("/{strategy_id}/unsubscribe")
 async def unsubscribe_strategy(
     strategy_id: str,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permissions(["strategies:read"])),
     strategy_service: StrategyService = Depends()
 ):
     """取消订阅策略"""

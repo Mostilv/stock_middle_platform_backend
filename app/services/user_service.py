@@ -1,6 +1,6 @@
 from typing import Optional, List
 from datetime import datetime
-from app.database import mongodb
+from app.db import mongodb
 from app.models.user import UserInDB, User, UserCreate, UserUpdate
 from app.core.security import get_password_hash, verify_password
 from bson import ObjectId
@@ -25,8 +25,8 @@ class UserService:
         # 创建用户文档
         user_dict = user_create.dict()
         user_dict["hashed_password"] = get_password_hash(user_create.password)
-        user_dict["created_at"] = datetime.utcnow()
-        user_dict["updated_at"] = datetime.utcnow()
+        user_dict["created_at"] = datetime.now()
+        user_dict["updated_at"] = datetime.now()
         
         # 移除明文密码
         del user_dict["password"]
@@ -75,7 +75,7 @@ class UserService:
         """更新用户信息"""
         update_data = user_update.dict(exclude_unset=True)
         if update_data:
-            update_data["updated_at"] = datetime.utcnow()
+            update_data["updated_at"] = datetime.now()
             
             result = await self.collection.update_one(
                 {"_id": ObjectId(user_id)},
@@ -85,6 +85,42 @@ class UserService:
             if result.modified_count > 0:
                 return await self.get_user_by_id(user_id)
         return None
+
+    async def add_roles(self, user_id: str, roles: list[str]) -> Optional[User]:
+        result = await self.collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$addToSet": {"roles": {"$each": roles}}, "$set": {"updated_at": datetime.now()}}
+        )
+        if result.modified_count > 0:
+            return await self.get_user_by_id(user_id)
+        return await self.get_user_by_id(user_id)
+
+    async def remove_roles(self, user_id: str, roles: list[str]) -> Optional[User]:
+        result = await self.collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$pull": {"roles": {"$in": roles}}, "$set": {"updated_at": datetime.now()}}
+        )
+        if result.modified_count > 0:
+            return await self.get_user_by_id(user_id)
+        return await self.get_user_by_id(user_id)
+
+    async def add_permissions(self, user_id: str, permissions: list[str]) -> Optional[User]:
+        result = await self.collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$addToSet": {"permissions": {"$each": permissions}}, "$set": {"updated_at": datetime.now()}}
+        )
+        if result.modified_count > 0:
+            return await self.get_user_by_id(user_id)
+        return await self.get_user_by_id(user_id)
+
+    async def remove_permissions(self, user_id: str, permissions: list[str]) -> Optional[User]:
+        result = await self.collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$pull": {"permissions": {"$in": permissions}}, "$set": {"updated_at": datetime.now()}}
+        )
+        if result.modified_count > 0:
+            return await self.get_user_by_id(user_id)
+        return await self.get_user_by_id(user_id)
 
     async def delete_user(self, user_id: str) -> bool:
         """删除用户"""
@@ -113,7 +149,7 @@ class UserService:
         # 设置为超级用户
         await self.collection.update_one(
             {"_id": ObjectId(user.id)},
-            {"$set": {"is_superuser": True, "updated_at": datetime.utcnow()}}
+            {"$set": {"is_superuser": True, "updated_at": datetime.now()}}
         )
         
         return await self.get_user_by_id(user.id)
