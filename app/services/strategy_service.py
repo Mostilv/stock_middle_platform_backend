@@ -1,6 +1,6 @@
 from typing import Optional, List
 from datetime import datetime
-from app.database import mongodb
+from app.db import mongodb
 from app.models.strategy import (
     StrategyInDB, Strategy, StrategyCreate, StrategyUpdate,
     StrategySubscription, StrategySubscriptionCreate, StrategySubscriptionResponse
