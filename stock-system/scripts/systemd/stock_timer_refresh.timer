@@ -1,0 +1,10 @@
+[Unit]
+Description=Trigger Stock System Daily Refresh
+
+[Timer]
+OnCalendar=*-*-* 17:30:00
+Persistent=true
+Unit=stock_timer_refresh.service
+
+[Install]
+WantedBy=timers.target

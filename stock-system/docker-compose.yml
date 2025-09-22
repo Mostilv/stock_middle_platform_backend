@@ -1,0 +1,24 @@
+services:
+  mysql:
+    image: mysql:8.0
+    command: ["--character-set-server=utf8mb4","--collation-server=utf8mb4_unicode_ci","--max-connections=100"]
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=stocksys
+      - MYSQL_USER=stocks
+      - MYSQL_PASSWORD=stocks_pwd
+    ports: ["3306:3306"]
+    volumes: [ "mysql_data:/var/lib/mysql" ]
+  mongo:
+    image: mongo:6.0
+    ports: ["27017:27017"]
+    volumes: [ "mongo_data:/data/db" ]
+  api:
+    build: .
+    depends_on: [ mysql, mongo ]
+    env_file: .env
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --loop uvloop --http h11
+    ports: ["8000:8000"]
+volumes:
+  mysql_data:
+  mongo_data:
