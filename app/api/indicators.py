@@ -1,9 +1,92 @@
-from typing import List, Optional
-from fastapi import APIRouter, Query, HTTPException, status
-from app.utils.data_sources import data_source_manager
+import logging
+from datetime import date
+from typing import Dict, Optional
+
 import pandas as pd
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
+
+from app.core.deps import get_current_active_user
+from app.models.user import User
+from app.services.indicator_service import IndicatorCalculationService
+from app.utils.data_sources import data_source_manager
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/indicators", tags=["指标展示"])
+
+
+class IndicatorComputeRequest(BaseModel):
+    """自定义指标计算请求体"""
+
+    start_date: Optional[date] = Field(None, description="开始日期 (YYYY-MM-DD)")
+    end_date: Optional[date] = Field(None, description="结束日期 (YYYY-MM-DD)")
+    target: Optional[str] = Field(None, description="指标目标标的，可选")
+    params: Dict[str, float] = Field(default_factory=dict, description="指标参数覆盖项")
+
+
+@router.get("/custom", summary="列出可用的自定义指标")
+async def list_custom_indicators(service: IndicatorCalculationService = Depends()):
+    indicators = service.list_indicators()
+    return {"data": indicators, "total": len(indicators)}
+
+
+@router.post("/custom/{indicator_key}/compute", summary="触发自定义指标计算")
+async def compute_custom_indicator(
+    indicator_key: str,
+    request: IndicatorComputeRequest,
+    _: User = Depends(get_current_active_user),
+    service: IndicatorCalculationService = Depends(),
+):
+    try:
+        modified, resolved_target = await service.compute_and_store(
+            indicator_key,
+            start=request.start_date,
+            end=request.end_date,
+            target=request.target,
+            params=dict(request.params),
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception as exc:  # pragma: no cover - 防御性兜底
+        logger.exception("计算指标 %s 失败", indicator_key)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="指标计算失败，请稍后再试",
+        ) from exc
+
+    return {
+        "indicator": indicator_key,
+        "modified": modified,
+        "target": resolved_target,
+    }
+
+
+@router.get("/custom/{indicator_key}", summary="查询自定义指标计算结果")
+async def get_custom_indicator_series(
+    indicator_key: str,
+    target: Optional[str] = Query(None, description="指标目标标的，可选"),
+    start_date: Optional[date] = Query(None, description="开始日期 (YYYY-MM-DD)"),
+    end_date: Optional[date] = Query(None, description="结束日期 (YYYY-MM-DD)"),
+    limit: int = Query(500, ge=1, le=5000, description="最大返回条数"),
+    service: IndicatorCalculationService = Depends(),
+):
+    try:
+        result = await service.fetch_indicator_series(
+            indicator_key,
+            start=start_date,
+            end=end_date,
+            target=target,
+            limit=limit,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return result
 
 
 @router.get("/stocks")

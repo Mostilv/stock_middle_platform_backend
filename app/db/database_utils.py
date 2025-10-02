@@ -80,16 +80,12 @@ class MySQLDataAccess:
                 placeholders = ', '.join([f':{key}' for key in data.keys()])
                 query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
                 
+                result = await session.execute(text(query), data)
+                await session.commit()
+
                 if return_id:
-                    query += "; SELECT LAST_INSERT_ID() as id"
-                    result = await session.execute(text(query), data)
-                    row = result.fetchone()
-                    await session.commit()
-                    return row.id if row else None
-                else:
-                    result = await session.execute(text(query), data)
-                    await session.commit()
-                    return result.rowcount
+                    return result.lastrowid
+                return result.rowcount
                     
         except Exception as e:
             logger.error(f"MySQL数据插入失败: {e}")

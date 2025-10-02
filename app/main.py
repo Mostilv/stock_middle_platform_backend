@@ -4,8 +4,7 @@ from fastapi.responses import JSONResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 from app.config import settings
 from app.db import mongodb, lifespan, db_connection_manager
-from app.api import auth, users, strategies, indicators
-from app.api import roles
+from app.api import auth, indicators, joinquant, roles, stocks, strategies, users
 from app.utils.swagger_config import (
     get_custom_openapi,
     get_swagger_ui_parameters,
@@ -50,6 +49,8 @@ app.include_router(users.router, prefix=settings.api_v1_str, tags=["用户管理
 app.include_router(roles.router, prefix=settings.api_v1_str, tags=["用户管理"])
 app.include_router(strategies.router, prefix=settings.api_v1_str, tags=["策略管理"])
 app.include_router(indicators.router, prefix=settings.api_v1_str, tags=["技术指标"])
+app.include_router(stocks.router, prefix=settings.api_v1_str, tags=["股票数据"])
+app.include_router(joinquant.router, prefix=settings.api_v1_str, tags=["聚宽集成"])
 
 # 自定义OpenAPI配置
 app.openapi = lambda: get_custom_openapi(app, app.title, app.version, app.description)

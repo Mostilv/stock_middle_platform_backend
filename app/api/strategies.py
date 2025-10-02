@@ -1,12 +1,23 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from app.core.deps import get_current_active_user, get_current_superuser, require_permissions
-from app.services.strategy_service import StrategyService
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+from app.core.deps import (
+    get_current_active_user,
+    get_current_superuser,
+    require_permissions,
+)
 from app.models.strategy import (
-    Strategy, StrategyCreate, StrategyUpdate, 
-    StrategySubscriptionResponse, StrategySubscriptionCreate
+    Strategy,
+    StrategyCreate,
+    StrategySubscriptionAdminCreate,
+    StrategySubscriptionCreate,
+    StrategySubscriptionResponse,
+    StrategySubscriptionUpdate,
+    StrategyUpdate,
 )
 from app.models.user import User
+from app.services.strategy_service import StrategyService
 
 router = APIRouter(prefix="/strategies", tags=["策略管理"])
 
@@ -103,7 +114,7 @@ async def subscribe_strategy(
     try:
         subscription = await strategy_service.subscribe_strategy(
             StrategySubscriptionCreate(strategy_id=strategy_id),
-            current_user.id
+            current_user.id,
         )
         return subscription
     except ValueError as e:
@@ -150,3 +161,57 @@ async def get_all_strategies(
     """获取所有策略（仅管理员）"""
     strategies = await strategy_service.get_all_strategies(skip=skip, limit=limit)
     return strategies
+
+
+@router.get("/admin/subscriptions", response_model=List[StrategySubscriptionResponse])
+async def admin_get_subscriptions(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    strategy_id: Optional[str] = Query(None),
+    user_id: Optional[int] = Query(None),
+    is_active: Optional[bool] = Query(None),
+    current_user: User = Depends(get_current_superuser),
+    strategy_service: StrategyService = Depends(),
+):
+    """管理员查询策略订阅列表"""
+
+    return await strategy_service.get_subscriptions(
+        skip=skip,
+        limit=limit,
+        strategy_id=strategy_id,
+        user_id=user_id,
+        is_active=is_active,
+    )
+
+
+@router.post(
+    "/admin/subscriptions",
+    response_model=StrategySubscriptionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def admin_create_subscription(
+    payload: StrategySubscriptionAdminCreate,
+    current_user: User = Depends(get_current_superuser),
+    strategy_service: StrategyService = Depends(),
+):
+    """管理员为用户创建/激活订阅"""
+
+    try:
+        return await strategy_service.admin_create_subscription(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
+@router.patch("/admin/subscriptions/{subscription_id}", response_model=StrategySubscriptionResponse)
+async def admin_update_subscription(
+    subscription_id: str,
+    update: StrategySubscriptionUpdate,
+    current_user: User = Depends(get_current_superuser),
+    strategy_service: StrategyService = Depends(),
+):
+    """管理员更新订阅状态"""
+
+    subscription = await strategy_service.update_subscription(subscription_id, update)
+    if not subscription:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="订阅不存在")
+    return subscription

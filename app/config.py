@@ -63,4 +63,14 @@ class Settings:
     baostock_user: str = config("BAOSTOCK_USER", default="anonymous")
     baostock_password: str = config("BAOSTOCK_PASSWORD", default="123456")
 
+    # 股票数据日线对账配置
+    stock_daily_anomaly_threshold: float = config(
+        "STOCK_DAILY_ANOMALY_THRESHOLD", default=0.005, cast=float
+    )
+
+    # 聚宽平台配置
+    joinquant_username: str = config("JOINQUANT_USERNAME", default="")
+    joinquant_password: str = config("JOINQUANT_PASSWORD", default="")
+    joinquant_webhook_secret: str = config("JOINQUANT_WEBHOOK_SECRET", default="")
+
 settings = Settings()

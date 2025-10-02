@@ -49,9 +49,13 @@ class User(BaseModel):
     is_superuser: bool
     created_at: datetime
     updated_at: datetime
+    roles: List[str] = Field(default_factory=list)
+    permissions: List[str] = Field(default_factory=list)
+    hashed_password: Optional[str] = Field(default=None, exclude=True)
 
     class Config:
         orm_mode = True
+        allow_population_by_field_name = True
 
 
 # 用户登录模型
