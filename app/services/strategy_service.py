@@ -1,9 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
 
-from bson import ObjectId
-
-from app.db import mongodb
 from app.models.strategy import (
     Strategy,
     StrategyCreate,
@@ -11,12 +8,12 @@ from app.models.strategy import (
     StrategySubscriptionResponse,
     StrategyUpdate,
 )
+from app.repositories.strategy_repository import StrategyRepository
 
 
 class StrategyService:
-    def __init__(self) -> None:
-        self.collection = mongodb.db.strategies
-        self.subscription_collection = mongodb.db.strategy_subscriptions
+    def __init__(self, repository: Optional[StrategyRepository] = None) -> None:
+        self.repository = repository or StrategyRepository()
 
     async def create_strategy(
         self, strategy_create: StrategyCreate, user_id: str
@@ -25,21 +22,18 @@ class StrategyService:
         now = datetime.utcnow()
         payload.update({"user_id": user_id, "created_at": now, "updated_at": now})
 
-        result = await self.collection.insert_one(payload)
-        return await self.get_strategy_by_id(str(result.inserted_id))
+        strategy_id = await self.repository.insert_strategy(payload)
+        return await self.get_strategy_by_id(strategy_id)
 
     async def get_strategy_by_id(self, strategy_id: str) -> Optional[Strategy]:
-        if not ObjectId.is_valid(strategy_id):
-            return None
-
-        document = await self.collection.find_one({"_id": ObjectId(strategy_id)})
+        document = await self.repository.find_by_id(strategy_id)
         return self._document_to_strategy(document) if document else None
 
     async def get_strategies_by_user(
         self, user_id: str, skip: int = 0, limit: int = 100
     ) -> List[Strategy]:
         strategies: List[Strategy] = []
-        cursor = self.collection.find({"user_id": user_id}).skip(skip).limit(limit)
+        cursor = await self.repository.list_by_user(user_id, skip, limit)
         async for document in cursor:
             strategies.append(self._document_to_strategy(document))
         return strategies
@@ -48,11 +42,7 @@ class StrategyService:
         self, skip: int = 0, limit: int = 100
     ) -> List[Strategy]:
         strategies: List[Strategy] = []
-        cursor = (
-            self.collection.find({"is_public": True, "is_active": True})
-            .skip(skip)
-            .limit(limit)
-        )
+        cursor = await self.repository.list_public(skip, limit)
         async for document in cursor:
             strategies.append(self._document_to_strategy(document))
         return strategies
@@ -69,10 +59,8 @@ class StrategyService:
             return strategy
 
         update_data["updated_at"] = datetime.utcnow()
-        await self.collection.update_one(
-            {"_id": ObjectId(strategy_id)},
-            {"$set": update_data},
-        )
+        if not await self.repository.update_strategy(strategy_id, update_data):
+            return None
         return await self.get_strategy_by_id(strategy_id)
 
     async def delete_strategy(self, strategy_id: str, user_id: str) -> bool:
@@ -80,8 +68,7 @@ class StrategyService:
         if not strategy or strategy.user_id != user_id:
             return False
 
-        result = await self.collection.delete_one({"_id": ObjectId(strategy_id)})
-        return result.deleted_count > 0
+        return await self.repository.delete_strategy(strategy_id)
 
     async def subscribe_strategy(
         self, subscription_create: StrategySubscriptionCreate, user_id: str
@@ -90,8 +77,8 @@ class StrategyService:
         if not strategy:
             raise ValueError("策略不存在")
 
-        exists = await self.subscription_collection.find_one(
-            {"user_id": user_id, "strategy_id": subscription_create.strategy_id}
+        exists = await self.repository.find_subscription(
+            user_id, subscription_create.strategy_id
         )
         if exists:
             raise ValueError("已经订阅该策略")
@@ -102,23 +89,18 @@ class StrategyService:
             "is_active": True,
             "created_at": datetime.utcnow(),
         }
-        result = await self.subscription_collection.insert_one(payload)
-        subscription = await self.subscription_collection.find_one(
-            {"_id": result.inserted_id}
-        )
+        subscription_id = await self.repository.insert_subscription(payload)
+        subscription = await self.repository.find_subscription_by_id(subscription_id)
         return self._document_to_subscription(subscription, strategy)
 
     async def unsubscribe_strategy(self, strategy_id: str, user_id: str) -> bool:
-        result = await self.subscription_collection.delete_one(
-            {"user_id": user_id, "strategy_id": strategy_id}
-        )
-        return result.deleted_count > 0
+        return await self.repository.delete_subscription(user_id, strategy_id)
 
     async def get_user_subscriptions(
         self, user_id: str
     ) -> List[StrategySubscriptionResponse]:
         subscriptions: List[StrategySubscriptionResponse] = []
-        cursor = self.subscription_collection.find({"user_id": user_id})
+        cursor = await self.repository.list_subscriptions(user_id)
         async for document in cursor:
             strategy = await self.get_strategy_by_id(document["strategy_id"])
             subscriptions.append(self._document_to_subscription(document, strategy))
@@ -128,7 +110,7 @@ class StrategyService:
         self, skip: int = 0, limit: int = 100
     ) -> List[Strategy]:
         strategies: List[Strategy] = []
-        cursor = self.collection.find().skip(skip).limit(limit)
+        cursor = await self.repository.list_all(skip, limit)
         async for document in cursor:
             strategies.append(self._document_to_strategy(document))
         return strategies
