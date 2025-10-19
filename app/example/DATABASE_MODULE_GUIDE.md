@@ -1,300 +1,67 @@
-# 数据库连接模块使用指南
+# 数据库模块简明指南
 
-## 概述
+项目中的数据库模块已经收敛为一个轻量的 MongoDB 管理器。下面的内容概述了可用组件以及如何在业务代码里使用它们。
 
-本项目新增了完整的数据库连接模块，支持MySQL和MongoDB的双数据库架构，提供了统一的数据库访问接口和连接管理功能。
-
-## 主要特性
-
-- ✅ **双数据库支持**: 同时支持MySQL和MongoDB
-- ✅ **连接池管理**: MySQL连接池配置和自动管理
-- ✅ **异步操作**: 完全异步的数据库操作
-- ✅ **生命周期管理**: 自动处理应用启动和关闭时的数据库连接
-- ✅ **健康检查**: 实时监控数据库连接状态
-- ✅ **错误处理**: 完善的异常处理和日志记录
-- ✅ **向后兼容**: 保持与现有代码的兼容性
-
-## 文件结构
+## 模块结构
 
 ```
 app/
-├── db/                         # 数据库模块
-│   ├── __init__.py            # 模块初始化
-│   ├── database.py            # 数据库连接管理器
-│   ├── database_manager.py    # 应用生命周期管理器
-│   └── database_utils.py      # 数据访问工具类
-└── example/                    # 示例模块
-    ├── __init__.py            # 模块初始化
-    ├── database_usage_examples.py  # 使用示例
-    └── DATABASE_MODULE_GUIDE.md    # 使用指南
+├── db/
+│   ├── __init__.py
+│   ├── database.py          # DatabaseManager 与兼容层
+│   └── database_manager.py  # FastAPI lifespan 帮助函数
+└── example/
+    ├── __init__.py
+    └── database_usage_examples.py  # 简单的 MongoDB 使用示例
 ```
 
-## 配置说明
-
-### 环境变量配置
-
-在 `.env` 文件中配置数据库连接参数：
-
-```env
-# MongoDB配置
-MONGODB_URL=mongodb://localhost:27017
-MONGODB_DB=stock_platform
-
-# MySQL配置
-MYSQL_HOST=localhost
-MYSQL_PORT=3306
-MYSQL_USER=root
-MYSQL_PASSWORD=password
-MYSQL_DATABASE=stock_platform
-MYSQL_CHARSET=utf8mb4
-
-# MySQL连接池配置
-MYSQL_POOL_SIZE=10
-MYSQL_MAX_OVERFLOW=20
-MYSQL_POOL_TIMEOUT=30
-MYSQL_POOL_RECYCLE=3600
-```
-
-### 依赖包
-
-确保安装了以下依赖包：
-
-```txt
-sqlalchemy==2.0.23
-pymysql==1.1.0
-aiomysql==0.2.0
-motor==3.3.2
-pymongo==4.6.0
-```
-
-## 使用方法
-
-### 1. 基本使用
-
-#### MySQL操作
-
-```python
-from app.db import MySQLDataAccess
-
-# 执行查询
-result = await MySQLDataAccess.execute_query(
-    "SELECT * FROM users WHERE id = :user_id",
-    {"user_id": 1},
-    fetch_one=True
-)
-
-# 插入数据
-user_id = await MySQLDataAccess.insert_data(
-    "users",
-    {"username": "test", "email": "test@example.com"},
-    return_id=True
-)
-
-# 更新数据
-updated_rows = await MySQLDataAccess.update_data(
-    "users",
-    {"email": "new@example.com"},
-    "id = :user_id",
-    {"user_id": user_id}
-)
-
-# 删除数据
-deleted_rows = await MySQLDataAccess.delete_data(
-    "users",
-    "id = :user_id",
-    {"user_id": user_id}
-)
-```
-
-#### MongoDB操作
-
-```python
-from app.db import MongoDBDataAccess
-
-# 插入文档
-doc_id = await MongoDBDataAccess.insert_document(
-    "users",
-    {"username": "test", "email": "test@example.com"}
-)
-
-# 查询文档
-users = await MongoDBDataAccess.find_documents(
-    "users",
-    {"username": "test"}
-)
-
-# 更新文档
-updated_count = await MongoDBDataAccess.update_document(
-    "users",
-    {"username": "test"},
-    {"$set": {"email": "new@example.com"}}
-)
-
-# 删除文档
-deleted_count = await MongoDBDataAccess.delete_document(
-    "users",
-    {"username": "test"}
-)
-```
-
-### 2. 高级使用
-
-#### 使用数据库管理器
+## 快速开始
 
 ```python
 from app.db import db_manager
 
-# 获取MySQL会话
-async with db_manager.get_mysql_session() as session:
-    result = await session.execute("SELECT * FROM users")
-    users = result.fetchall()
+async def create_demo_record():
+    await db_manager.connect_all()  # 启动时通常由 lifespan 自动完成
 
-# 获取MongoDB集合
-collection = db_manager.get_mongodb_collection("users")
-await collection.insert_one({"username": "test"})
+    collection = db_manager.get_mongodb_collection("demo_logs")
+    await collection.insert_one({"message": "hello", "level": "info"})
+
+    health = await db_manager.health_check()
+    print(health)  # {'mongodb': True}
 ```
 
-#### 健康检查
+> 提示：如果应用通过 `FastAPI(lifespan=lifespan)` 启动，则无需手动调用 `connect_all`/`disconnect_all`。
+
+## DatabaseManager 能力
+
+| 方法 | 说明 |
+| ---- | ---- |
+| `connect_all()` | 建立 MongoDB 连接，供应用启动时调用 |
+| `disconnect_all()` | 关闭现有连接，应用优雅退出时调用 |
+| `health_check()` | 返回 `{"mongodb": bool}`，可用于健康检查 |
+| `get_mongodb_collection(name)` | 返回指定集合对象，常用于业务服务 |
+| `is_connected()` | 返回最近一次连接结果 |
+
+同时保留了 `mongodb` 兼容层，仍可通过 `from app.db import mongodb` 获取 `mongodb.db` 与 `mongodb.client`。
+
+## 健康检查
+
+`DatabaseConnectionManager` 封装在 `database_manager.py` 内，FastAPI 的 `/health` 端点会使用它来查询数据库状态。独立使用时：
 
 ```python
-from app.db import data_access
+from app.db import db_connection_manager
 
-# 检查数据库健康状态
-health_status = await data_access.health_check()
-print(health_status)  # {'mysql': True, 'mongodb': True}
+status = await db_connection_manager.health_check()
+if all(status.values()):
+    print("数据库正常")
 ```
 
-### 3. 在API中使用
+## 示例脚本
 
-```python
-from fastapi import APIRouter, Depends
-from app.db import db_manager
-from app.db import MySQLDataAccess
+`app/example/database_usage_examples.py` 提供了一个最小示例，演示了插入文档、读取最新记录以及输出健康检查结果。可通过 `python app/example/database_usage_examples.py` 直接运行。
 
-router = APIRouter()
+## 常见问题
 
-@router.get("/users/{user_id}")
-async def get_user(user_id: int):
-    # 使用MySQL查询用户
-    user = await MySQLDataAccess.execute_query(
-        "SELECT * FROM users WHERE id = :user_id",
-        {"user_id": user_id},
-        fetch_one=True
-    )
-    
-    if not user:
-        return {"error": "用户不存在"}
-    
-    return {"user": user}
-```
-
-## 应用集成
-
-### 自动生命周期管理
-
-应用已经集成了自动的数据库生命周期管理：
-
-```python
-# app/main.py
-from app.db import lifespan
-
-app = FastAPI(
-    # ... 其他配置
-    lifespan=lifespan  # 自动管理数据库连接
-)
-```
-
-### 健康检查端点
-
-访问 `/health` 端点可以查看数据库连接状态：
-
-```json
-{
-    "status": "healthy",
-    "database": {
-        "mysql": true,
-        "mongodb": true
-    },
-    "connected": true
-}
-```
-
-## 最佳实践
-
-### 1. 错误处理
-
-```python
-try:
-    result = await MySQLDataAccess.execute_query(query, params)
-except Exception as e:
-    logger.error(f"数据库操作失败: {e}")
-    # 处理错误
-```
-
-### 2. 连接管理
-
-- 使用上下文管理器自动管理连接
-- 避免长时间持有数据库连接
-- 定期检查连接健康状态
-
-### 3. 性能优化
-
-- 使用连接池减少连接开销
-- 合理设置连接池参数
-- 使用索引优化查询性能
-
-### 4. 安全考虑
-
-- 使用参数化查询防止SQL注入
-- 不要在日志中记录敏感信息
-- 定期更新数据库密码
-
-## 故障排除
-
-### 常见问题
-
-1. **连接失败**
-   - 检查数据库服务是否运行
-   - 验证连接参数是否正确
-   - 检查网络连接
-
-2. **性能问题**
-   - 调整连接池大小
-   - 检查查询是否使用了索引
-   - 监控数据库性能指标
-
-3. **内存泄漏**
-   - 确保正确关闭数据库连接
-   - 检查是否有未释放的资源
-
-### 调试技巧
-
-1. 启用SQLAlchemy日志：
-```python
-# 在config.py中设置
-debug: bool = True
-```
-
-2. 使用健康检查监控连接状态
-
-3. 查看应用日志获取详细错误信息
-
-## 示例代码
-
-完整的使用示例请参考 `app/examples/database_usage_examples.py` 文件。
-
-## 更新日志
-
-- **v1.0.0**: 初始版本，支持MySQL和MongoDB双数据库
-- 添加了连接池管理
-- 实现了异步操作支持
-- 集成了生命周期管理
-- 提供了完整的工具类
-
-## 技术支持
-
-如有问题，请查看：
-1. 应用日志文件
-2. 数据库连接状态
-3. 环境变量配置
-4. 依赖包版本
+- **连接失败**：确认 MongoDB 服务是否运行，以及 `MONGODB_URL`、`MONGODB_DB` 环境变量是否配置正确。
+- **首次访问报错**：确保在访问 `db_manager` 之前已经建立连接（通常由 lifespan 自动处理）。
+- **需要不同的数据库**：如果后续扩展到其他数据库，可在 `DatabaseManager` 中按需新增连接逻辑。

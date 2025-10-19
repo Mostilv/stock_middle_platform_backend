@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
-"""
-åˆå§‹åŒ–ç®¡ç†å‘˜ç”¨æˆ·è„šæœ¬
-"""
+"""³õÊ¼»¯¹ÜÀíÔ±ÓÃ»§½Å±¾"""
 
 import asyncio
-import sys
 import os
+import sys
 
-# æ·»åŠ é¡¹ç›®æ ¹ç›®å½•åˆ°Pythonè·¯å¾„
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.db import mongodb
@@ -15,38 +12,29 @@ from app.services.user_service import UserService
 
 
 async def create_superuser():
-    """åˆ›å»ºè¶…çº§ç”¨æˆ·"""
     try:
-        # è¿æ¥æ•°æ®åº“
         await mongodb.connect_to_mongo()
-        
-        # åˆ›å»ºç”¨æˆ·æœåŠ¡
         user_service = UserService()
-        
-        # æ£€æŸ¥æ˜¯å¦å·²å­˜åœ¨è¶…çº§ç”¨æˆ·
+
         existing_admin = await user_service.get_user_by_username("admin")
         if existing_admin:
-            print("è¶…çº§ç”¨æˆ·å·²å­˜åœ¨ï¼Œè·³è¿‡åˆ›å»º")
+            print("³¬¼¶ÓÃ»§ÒÑ´æÔÚ£¬Ìø¹ı´´½¨")
             return
-        
-        # åˆ›å»ºè¶…çº§ç”¨æˆ·
+
         admin_user = await user_service.create_superuser(
             username="admin",
             email="admin@example.com",
             password="admin123",
-            full_name="ç³»ç»Ÿç®¡ç†å‘˜"
+            full_name="ÏµÍ³¹ÜÀíÔ±",
         )
-        
-        print(f"è¶…çº§ç”¨æˆ·åˆ›å»ºæˆåŠŸ: {admin_user.username}")
-        print(f"ç”¨æˆ·å: {admin_user.username}")
-        print(f"é‚®ç®±: {admin_user.email}")
-        print(f"å¯†ç : admin123")
-        print("è¯·åŠæ—¶ä¿®æ”¹é»˜è®¤å¯†ç ï¼")
-        
-    except Exception as e:
-        print(f"åˆ›å»ºè¶…çº§ç”¨æˆ·å¤±è´¥: {e}")
+
+        print(f"³¬¼¶ÓÃ»§´´½¨³É¹¦: {admin_user.username}")
+        print("ÓÃ»§Ãû: admin")
+        print("ÃÜÂë: admin123 (Çë¾¡¿ìĞŞ¸Ä)")
+        print(f"ÓÊÏä: {admin_user.email}")
+    except Exception as exc:
+        print(f"´´½¨³¬¼¶ÓÃ»§Ê§°Ü: {exc}")
     finally:
-        # å…³é—­æ•°æ®åº“è¿æ¥
         await mongodb.close_mongo_connection()
 
 

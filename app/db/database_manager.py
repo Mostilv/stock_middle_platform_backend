@@ -1,123 +1,71 @@
 """
-数据库连接管理器
-负责应用启动和关闭时的数据库连接管理
+Application level helpers for managing database connections.
 """
 
 import logging
 from contextlib import asynccontextmanager
+from typing import Dict
+
 from fastapi import FastAPI
+
 from .database import db_manager
-from .database_utils import data_access
 
 logger = logging.getLogger(__name__)
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    应用生命周期管理器
-    负责数据库连接的启动和关闭
-    """
-    # 启动时连接数据库
-    logger.info("🚀 正在启动数据库连接...")
-    
+    """FastAPI lifespan handler that opens and closes the MongoDB connection."""
+    logger.info("Starting database layer initialisation")
     try:
-        # 连接所有数据库
         connected = await db_manager.connect_all()
-        
         if connected:
-            logger.info("✅ 所有数据库连接成功")
-            
-            # 执行健康检查
-            health_status = await data_access.health_check()
-            logger.info(f"📊 数据库健康状态: {health_status}")
-            
-            # 将数据库管理器添加到应用状态
-            app.state.db_manager = db_manager
-            app.state.data_access = data_access
-            
+            logger.info("MongoDB connection established")
         else:
-            logger.error("❌ 数据库连接失败")
-            # 即使连接失败也继续启动，但记录错误
-            
-    except Exception as e:
-        logger.error(f"❌ 数据库连接过程中发生错误: {e}")
-    
-    yield
-    
-    # 关闭时断开数据库连接
-    logger.info("🔄 正在关闭数据库连接...")
-    
+            logger.warning("MongoDB connection could not be established during startup")
+    except Exception:
+        logger.exception("Unexpected error while connecting to MongoDB")
+
+    app.state.db_manager = db_manager
+
     try:
-        await db_manager.disconnect_all()
-        logger.info("✅ 所有数据库连接已关闭")
-    except Exception as e:
-        logger.error(f"❌ 关闭数据库连接时发生错误: {e}")
+        yield
+    finally:
+        logger.info("Shutting down database layer")
+        try:
+            await db_manager.disconnect_all()
+        except Exception:
+            logger.exception("Unexpected error while closing MongoDB connections")
+
 
 class DatabaseConnectionManager:
-    """数据库连接管理器类"""
-    
-    def __init__(self):
+    """Small facade used by health checks and background tasks."""
+
+    def __init__(self) -> None:
+        self.connected: bool = False
+        self.health_status: Dict[str, bool] = {}
+
+    async def initialize(self) -> bool:
+        logger.info("Initialising database connection")
+        self.connected = await db_manager.connect_all()
+        self.health_status = await db_manager.health_check()
+        return self.connected
+
+    async def shutdown(self) -> None:
+        logger.info("Closing database connection")
+        await db_manager.disconnect_all()
         self.connected = False
         self.health_status = {}
-    
-    async def initialize(self) -> bool:
-        """
-        初始化数据库连接
-        
-        Returns:
-            是否初始化成功
-        """
-        try:
-            logger.info("🔧 正在初始化数据库连接...")
-            
-            # 连接所有数据库
-            self.connected = await db_manager.connect_all()
-            
-            if self.connected:
-                # 执行健康检查
-                self.health_status = await data_access.health_check()
-                logger.info(f"📊 数据库健康状态: {self.health_status}")
-                return True
-            else:
-                logger.error("❌ 数据库连接失败")
-                return False
-                
-        except Exception as e:
-            logger.error(f"❌ 数据库初始化失败: {e}")
-            return False
-    
-    async def shutdown(self):
-        """关闭数据库连接"""
-        try:
-            logger.info("🔄 正在关闭数据库连接...")
-            await db_manager.disconnect_all()
-            self.connected = False
-            self.health_status = {}
-            logger.info("✅ 数据库连接已关闭")
-        except Exception as e:
-            logger.error(f"❌ 关闭数据库连接时发生错误: {e}")
-    
-    async def health_check(self) -> dict:
-        """
-        执行数据库健康检查
-        
-        Returns:
-            健康状态字典
-        """
-        try:
-            self.health_status = await data_access.health_check()
-            return self.health_status
-        except Exception as e:
-            logger.error(f"❌ 数据库健康检查失败: {e}")
-            return {"mysql": False, "mongodb": False}
-    
-    def is_connected(self) -> bool:
-        """检查是否已连接"""
-        return self.connected
-    
-    def get_health_status(self) -> dict:
-        """获取健康状态"""
+
+    async def health_check(self) -> Dict[str, bool]:
+        self.health_status = await db_manager.health_check()
         return self.health_status
 
-# 全局数据库连接管理器实例
+    def is_connected(self) -> bool:
+        return self.connected or db_manager.is_connected()
+
+    def get_health_status(self) -> Dict[str, bool]:
+        return self.health_status
+
+
 db_connection_manager = DatabaseConnectionManager()

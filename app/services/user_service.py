@@ -1,155 +1,169 @@
-from typing import Optional, List
 from datetime import datetime
-from app.db import mongodb
-from app.models.user import UserInDB, User, UserCreate, UserUpdate
-from app.core.security import get_password_hash, verify_password
+from typing import List, Optional
+
 from bson import ObjectId
+
+from app.core.security import get_password_hash, verify_password
+from app.db import mongodb
+from app.models.user import User, UserCreate, UserInDB, UserUpdate
 
 
 class UserService:
-    def __init__(self):
+    def __init__(self) -> None:
         self.collection = mongodb.db.users
 
     async def create_user(self, user_create: UserCreate) -> User:
-        """创建新用户"""
-        # 检查用户名是否已存在
-        existing_user = await self.get_user_by_username(user_create.username)
-        if existing_user:
+        if await self.collection.find_one({"username": user_create.username}):
             raise ValueError("用户名已存在")
-        
-        # 检查邮箱是否已存在
-        existing_email = await self.get_user_by_email(user_create.email)
-        if existing_email:
+
+        if await self.collection.find_one({"email": user_create.email}):
             raise ValueError("邮箱已存在")
-        
-        # 创建用户文档
-        user_dict = user_create.dict()
-        user_dict["hashed_password"] = get_password_hash(user_create.password)
-        user_dict["created_at"] = datetime.now()
-        user_dict["updated_at"] = datetime.now()
-        
-        # 移除明文密码
-        del user_dict["password"]
-        
-        user_in_db = UserInDB(**user_dict)
-        result = await self.collection.insert_one(user_in_db.dict(by_alias=True))
-        
-        # 获取创建的用户
-        created_user = await self.get_user_by_id(str(result.inserted_id))
-        return created_user
+
+        now = datetime.utcnow()
+        user_data = user_create.dict(exclude={"password"})
+        user_doc = UserInDB(
+            **user_data,
+            hashed_password=get_password_hash(user_create.password),
+            created_at=now,
+            updated_at=now,
+        )
+
+        insert_result = await self.collection.insert_one(
+            user_doc.dict(by_alias=True, exclude_none=True)
+        )
+        return await self.get_user_by_id(str(insert_result.inserted_id))
 
     async def get_user_by_id(self, user_id: str) -> Optional[User]:
-        """根据ID获取用户"""
-        user_doc = await self.collection.find_one({"_id": ObjectId(user_id)})
-        if user_doc:
-            user_doc["id"] = str(user_doc["_id"])
-            return User(**user_doc)
-        return None
+        if not ObjectId.is_valid(user_id):
+            return None
+        document = await self.collection.find_one({"_id": ObjectId(user_id)})
+        return self._document_to_user(document) if document else None
 
     async def get_user_by_username(self, username: str) -> Optional[User]:
-        """根据用户名获取用户"""
-        user_doc = await self.collection.find_one({"username": username})
-        if user_doc:
-            user_doc["id"] = str(user_doc["_id"])
-            return User(**user_doc)
-        return None
+        document = await self.collection.find_one({"username": username})
+        return self._document_to_user(document) if document else None
 
     async def get_user_by_email(self, email: str) -> Optional[User]:
-        """根据邮箱获取用户"""
-        user_doc = await self.collection.find_one({"email": email})
-        if user_doc:
-            user_doc["id"] = str(user_doc["_id"])
-            return User(**user_doc)
-        return None
+        document = await self.collection.find_one({"email": email})
+        return self._document_to_user(document) if document else None
 
     async def authenticate_user(self, username: str, password: str) -> Optional[User]:
-        """验证用户"""
-        user = await self.get_user_by_username(username)
-        if not user:
+        document = await self.collection.find_one({"username": username})
+        if not document:
             return None
-        if not verify_password(password, user.hashed_password):
+
+        user_in_db = UserInDB(**document)
+        if not verify_password(password, user_in_db.hashed_password):
             return None
-        return user
+
+        return self._document_to_user(document)
 
     async def update_user(self, user_id: str, user_update: UserUpdate) -> Optional[User]:
-        """更新用户信息"""
+        if not ObjectId.is_valid(user_id):
+            return None
+
         update_data = user_update.dict(exclude_unset=True)
-        if update_data:
-            update_data["updated_at"] = datetime.now()
-            
-            result = await self.collection.update_one(
-                {"_id": ObjectId(user_id)},
-                {"$set": update_data}
-            )
-            
-            if result.modified_count > 0:
-                return await self.get_user_by_id(user_id)
-        return None
-
-    async def add_roles(self, user_id: str, roles: list[str]) -> Optional[User]:
-        result = await self.collection.update_one(
-            {"_id": ObjectId(user_id)},
-            {"$addToSet": {"roles": {"$each": roles}}, "$set": {"updated_at": datetime.now()}}
-        )
-        if result.modified_count > 0:
+        if not update_data:
             return await self.get_user_by_id(user_id)
+
+        update_data["updated_at"] = datetime.utcnow()
+        await self.collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": update_data},
+        )
         return await self.get_user_by_id(user_id)
 
-    async def remove_roles(self, user_id: str, roles: list[str]) -> Optional[User]:
-        result = await self.collection.update_one(
+    async def add_roles(self, user_id: str, roles: List[str]) -> Optional[User]:
+        if not ObjectId.is_valid(user_id):
+            return None
+
+        await self.collection.update_one(
             {"_id": ObjectId(user_id)},
-            {"$pull": {"roles": {"$in": roles}}, "$set": {"updated_at": datetime.now()}}
+            {
+                "$addToSet": {"roles": {"$each": roles}},
+                "$set": {"updated_at": datetime.utcnow()},
+            },
         )
-        if result.modified_count > 0:
-            return await self.get_user_by_id(user_id)
         return await self.get_user_by_id(user_id)
 
-    async def add_permissions(self, user_id: str, permissions: list[str]) -> Optional[User]:
-        result = await self.collection.update_one(
+    async def remove_roles(self, user_id: str, roles: List[str]) -> Optional[User]:
+        if not ObjectId.is_valid(user_id):
+            return None
+
+        await self.collection.update_one(
             {"_id": ObjectId(user_id)},
-            {"$addToSet": {"permissions": {"$each": permissions}}, "$set": {"updated_at": datetime.now()}}
+            {
+                "$pull": {"roles": {"$in": roles}},
+                "$set": {"updated_at": datetime.utcnow()},
+            },
         )
-        if result.modified_count > 0:
-            return await self.get_user_by_id(user_id)
         return await self.get_user_by_id(user_id)
 
-    async def remove_permissions(self, user_id: str, permissions: list[str]) -> Optional[User]:
-        result = await self.collection.update_one(
+    async def add_permissions(self, user_id: str, permissions: List[str]) -> Optional[User]:
+        if not ObjectId.is_valid(user_id):
+            return None
+
+        await self.collection.update_one(
             {"_id": ObjectId(user_id)},
-            {"$pull": {"permissions": {"$in": permissions}}, "$set": {"updated_at": datetime.now()}}
+            {
+                "$addToSet": {"permissions": {"$each": permissions}},
+                "$set": {"updated_at": datetime.utcnow()},
+            },
         )
-        if result.modified_count > 0:
-            return await self.get_user_by_id(user_id)
+        return await self.get_user_by_id(user_id)
+
+    async def remove_permissions(
+        self, user_id: str, permissions: List[str]
+    ) -> Optional[User]:
+        if not ObjectId.is_valid(user_id):
+            return None
+
+        await self.collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {
+                "$pull": {"permissions": {"$in": permissions}},
+                "$set": {"updated_at": datetime.utcnow()},
+            },
+        )
         return await self.get_user_by_id(user_id)
 
     async def delete_user(self, user_id: str) -> bool:
-        """删除用户"""
+        if not ObjectId.is_valid(user_id):
+            return False
         result = await self.collection.delete_one({"_id": ObjectId(user_id)})
         return result.deleted_count > 0
 
     async def get_users(self, skip: int = 0, limit: int = 100) -> List[User]:
-        """获取用户列表"""
-        users = []
+        users: List[User] = []
         cursor = self.collection.find().skip(skip).limit(limit)
-        async for user_doc in cursor:
-            user_doc["id"] = str(user_doc["_id"])
-            users.append(User(**user_doc))
+        async for document in cursor:
+            users.append(self._document_to_user(document))
         return users
 
-    async def create_superuser(self, username: str, email: str, password: str, full_name: str = None) -> User:
-        """创建超级用户"""
-        user_create = UserCreate(
-            username=username,
-            email=email,
-            password=password,
-            full_name=full_name
+    async def create_superuser(
+        self, username: str, email: str, password: str, full_name: Optional[str] = None
+    ) -> User:
+        user = await self.create_user(
+            UserCreate(
+                username=username,
+                email=email,
+                password=password,
+                full_name=full_name,
+                roles=["admin"],
+                permissions=[],
+                is_superuser=True,
+            )
         )
-        user = await self.create_user(user_create)
-        
-        # 设置为超级用户
+
         await self.collection.update_one(
             {"_id": ObjectId(user.id)},
-            {"$set": {"is_superuser": True, "updated_at": datetime.now()}}
+            {"$set": {"is_superuser": True, "updated_at": datetime.utcnow()}},
         )
-        
         return await self.get_user_by_id(user.id)
+
+    @staticmethod
+    def _document_to_user(document: dict) -> User:
+        document = {**document, "id": str(document["_id"])}
+        document.setdefault("roles", [])
+        document.setdefault("permissions", [])
+        return User(**document)

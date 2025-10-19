@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
-"""
-åˆå§‹åŒ–é»˜è®¤è§’è‰²ä¸æƒé™è„šæœ¬
-"""
+"""³õÊ¼»¯Ä¬ÈÏ½ÇÉ«ÓëÈ¨ÏŞ½Å±¾"""
 
 import asyncio
-import sys
 import os
-from datetime import datetime
+import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -18,7 +15,7 @@ from app.models.role import RoleCreate
 DEFAULT_ROLES = [
     {
         "name": "admin",
-        "description": "ç³»ç»Ÿç®¡ç†å‘˜",
+        "description": "ÏµÍ³¹ÜÀíÔ±",
         "permissions": [
             "users:read",
             "users:write",
@@ -32,7 +29,7 @@ DEFAULT_ROLES = [
     },
     {
         "name": "user",
-        "description": "æ™®é€šç”¨æˆ·",
+        "description": "ÆÕÍ¨ÓÃ»§",
         "permissions": [
             "strategies:read",
             "indicators:read",
@@ -48,15 +45,13 @@ async def init_roles():
         for role in DEFAULT_ROLES:
             existing = await service.get_role_by_name(role["name"])
             if existing:
-                print(f"è§’è‰²å·²å­˜åœ¨ï¼Œè·³è¿‡: {role['name']}")
+                print(f"½ÇÉ«ÒÑ´æÔÚ£¬Ìø¹ı: {role['name']}")
                 continue
             await service.create_role(role_create=RoleCreate(**role))
-            print(f"åˆ›å»ºè§’è‰²æˆåŠŸ: {role['name']}")
+            print(f"´´½¨½ÇÉ«³É¹¦: {role['name']}")
     finally:
         await mongodb.close_mongo_connection()
 
 
 if __name__ == "__main__":
     asyncio.run(init_roles())
-
-

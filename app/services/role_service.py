@@ -1,64 +1,77 @@
-from typing import List, Optional
 from datetime import datetime
-from app.db import mongodb
-from app.models.role import RoleInDB, Role, RoleCreate, RoleUpdate
+from typing import List, Optional
+
 from bson import ObjectId
+
+from app.db import mongodb
+from app.models.role import Role, RoleCreate, RoleUpdate
 
 
 class RoleService:
-    def __init__(self):
+    def __init__(self) -> None:
         self.collection = mongodb.db.roles
 
     async def create_role(self, role_create: RoleCreate) -> Role:
-        existing = await self.get_role_by_name(role_create.name)
-        if existing:
+        if await self.collection.find_one({"name": role_create.name}):
             raise ValueError("角色已存在")
 
-        role_dict = role_create.dict()
-        role_dict["created_at"] = datetime.now()
-        role_dict["updated_at"] = datetime.now()
+        now = datetime.utcnow()
+        role_doc = {
+            "name": role_create.name,
+            "description": role_create.description,
+            "permissions": role_create.permissions,
+            "created_at": now,
+            "updated_at": now,
+        }
 
-        role_in_db = RoleInDB(**role_dict)
-        result = await self.collection.insert_one(role_in_db.dict(by_alias=True))
+        result = await self.collection.insert_one(role_doc)
         return await self.get_role_by_id(str(result.inserted_id))
 
     async def get_role_by_id(self, role_id: str) -> Optional[Role]:
-        doc = await self.collection.find_one({"_id": ObjectId(role_id)})
-        if doc:
-            doc["id"] = str(doc["_id"])
-            return Role(**doc)
-        return None
+        if not ObjectId.is_valid(role_id):
+            return None
+        document = await self.collection.find_one({"_id": ObjectId(role_id)})
+        return self._document_to_role(document) if document else None
 
     async def get_role_by_name(self, name: str) -> Optional[Role]:
-        doc = await self.collection.find_one({"name": name})
-        if doc:
-            doc["id"] = str(doc["_id"])
-            return Role(**doc)
-        return None
+        document = await self.collection.find_one({"name": name})
+        return self._document_to_role(document) if document else None
 
     async def list_roles(self, skip: int = 0, limit: int = 100) -> List[Role]:
         roles: List[Role] = []
         cursor = self.collection.find().skip(skip).limit(limit)
-        async for doc in cursor:
-            doc["id"] = str(doc["_id"])
-            roles.append(Role(**doc))
+        async for document in cursor:
+            roles.append(self._document_to_role(document))
         return roles
 
     async def update_role(self, role_id: str, role_update: RoleUpdate) -> Optional[Role]:
+        if not ObjectId.is_valid(role_id):
+            return None
+
         update_data = role_update.dict(exclude_unset=True)
-        if update_data:
-            update_data["updated_at"] = datetime.now()
-            result = await self.collection.update_one(
-                {"_id": ObjectId(role_id)},
-                {"$set": update_data}
-            )
-            if result.modified_count > 0:
-                return await self.get_role_by_id(role_id)
-        return None
+        if not update_data:
+            return await self.get_role_by_id(role_id)
+
+        update_data["updated_at"] = datetime.utcnow()
+        await self.collection.update_one(
+            {"_id": ObjectId(role_id)},
+            {"$set": update_data},
+        )
+        return await self.get_role_by_id(role_id)
 
     async def delete_role(self, role_id: str) -> bool:
+        if not ObjectId.is_valid(role_id):
+            return False
         result = await self.collection.delete_one({"_id": ObjectId(role_id)})
         return result.deleted_count > 0
 
-
-
+    @staticmethod
+    def _document_to_role(document: dict) -> Role:
+        return Role(
+            id=str(document["_id"]),
+            name=document["name"],
+            description=document.get("description"),
+            permissions=document.get("permissions", []),
+            created_at=document.get("created_at", datetime.utcnow()),
+            updated_at=document.get("updated_at", datetime.utcnow()),
+        )

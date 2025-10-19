@@ -1,18 +1,8 @@
 """
-数据库模块
-包含数据库连接管理和数据访问工具
+Database helpers exposed at package level.
 """
 
 from .database import db_manager, mongodb
-from .database_manager import lifespan, db_connection_manager
-from .database_utils import data_access, MySQLDataAccess, MongoDBDataAccess
+from .database_manager import db_connection_manager, lifespan
 
-__all__ = [
-    'db_manager',
-    'mongodb', 
-    'lifespan',
-    'db_connection_manager',
-    'data_access',
-    'MySQLDataAccess',
-    'MongoDBDataAccess'
-]
+__all__ = ["db_manager", "mongodb", "db_connection_manager", "lifespan"]
