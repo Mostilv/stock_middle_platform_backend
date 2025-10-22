@@ -4,6 +4,7 @@ from typing import Dict, Optional
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from app.config import settings
+from app.utils.in_memory_db import InMemoryDatabase
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,19 @@ class DatabaseManager:
             client = AsyncIOMotorClient(settings.mongodb_url)
             await client.admin.command("ping")
         except Exception as exc:
+            if settings.debug:
+                logger.warning(
+                    "Failed to connect to MongoDB at %s (%s). Falling back to in-memory store.",
+                    settings.mongodb_url,
+                    exc,
+                )
+                self.mongodb_client = None
+                if not isinstance(self.mongodb_db, InMemoryDatabase):
+                    self.mongodb_db = InMemoryDatabase()
+                self._connected = True
+                logger.info("Using in-memory MongoDB mock database.")
+                return True
+
             logger.exception("Failed to connect to MongoDB: %s", exc)
             self.mongodb_client = None
             self.mongodb_db = None
@@ -43,6 +57,9 @@ class DatabaseManager:
 
     async def disconnect_mongodb(self) -> None:
         """Close the MongoDB connection if it exists."""
+        if isinstance(self.mongodb_db, InMemoryDatabase):
+            logger.info("Clearing in-memory MongoDB mock database")
+            self.mongodb_db.reset()
         if self.mongodb_client:
             self.mongodb_client.close()
             logger.info("MongoDB connection closed")
@@ -57,19 +74,23 @@ class DatabaseManager:
     async def health_check(self) -> Dict[str, bool]:
         """Return a simple health snapshot of the database layer."""
         status: Dict[str, bool] = {"mongodb": False}
-        if not self.mongodb_client:
+
+        if isinstance(self.mongodb_db, InMemoryDatabase):
+            status["mongodb"] = True
             return status
 
-        try:
-            await self.mongodb_client.admin.command("ping")
-        except Exception as exc:
-            logger.exception("MongoDB health check failed: %s", exc)
-        else:
-            status["mongodb"] = True
+        if self.mongodb_client:
+            try:
+                await self.mongodb_client.admin.command("ping")
+            except Exception as exc:
+                logger.exception("MongoDB health check failed: %s", exc)
+            else:
+                status["mongodb"] = True
+
         return status
 
     def get_mongodb_collection(self, name: str):
-        if not self.mongodb_db:
+        if self.mongodb_db is None:
             raise RuntimeError("MongoDB is not connected.")
         return self.mongodb_db[name]
 
@@ -91,13 +112,13 @@ class MongoDB:
 
     @property
     def client(self) -> AsyncIOMotorClient:
-        if not db_manager.mongodb_client:
+        if db_manager.mongodb_client is None:
             raise RuntimeError("MongoDB is not connected.")
         return db_manager.mongodb_client
 
     @property
     def db(self) -> AsyncIOMotorDatabase:
-        if not db_manager.mongodb_db:
+        if db_manager.mongodb_db is None:
             raise RuntimeError("MongoDB is not connected.")
         return db_manager.mongodb_db
 

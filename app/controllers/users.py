@@ -1,6 +1,10 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from app.core.deps import get_current_active_user, get_current_superuser
+from app.core.deps import (
+    get_current_active_user,
+    get_current_superuser,
+    get_user_service,
+)
 from app.services.user_service import UserService
 from app.models.user import User, UserUpdate
 from pydantic import BaseModel
@@ -13,7 +17,7 @@ async def get_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_superuser),
-    user_service: UserService = Depends()
+    user_service: UserService = Depends(get_user_service),
 ):
     """获取用户列表（仅管理员）"""
     users = await user_service.get_users(skip=skip, limit=limit)
@@ -24,7 +28,7 @@ async def get_users(
 async def get_user(
     user_id: str,
     current_user: User = Depends(get_current_superuser),
-    user_service: UserService = Depends()
+    user_service: UserService = Depends(get_user_service),
 ):
     """获取用户信息（仅管理员）"""
     user = await user_service.get_user_by_id(user_id)
@@ -41,7 +45,7 @@ async def update_user(
     user_id: str,
     user_update: UserUpdate,
     current_user: User = Depends(get_current_superuser),
-    user_service: UserService = Depends()
+    user_service: UserService = Depends(get_user_service),
 ):
     """更新用户信息（仅管理员）"""
     user = await user_service.update_user(user_id, user_update)
@@ -57,7 +61,7 @@ async def update_user(
 async def delete_user(
     user_id: str,
     current_user: User = Depends(get_current_superuser),
-    user_service: UserService = Depends()
+    user_service: UserService = Depends(get_user_service),
 ):
     """删除用户（仅管理员）"""
     success = await user_service.delete_user(user_id)
@@ -82,7 +86,7 @@ async def add_user_roles(
     user_id: str,
     body: RolesUpdate,
     current_user: User = Depends(get_current_superuser),
-    user_service: UserService = Depends()
+    user_service: UserService = Depends(get_user_service),
 ):
     return await user_service.add_roles(user_id, body.roles)
 
@@ -92,7 +96,7 @@ async def remove_user_roles(
     user_id: str,
     body: RolesUpdate,
     current_user: User = Depends(get_current_superuser),
-    user_service: UserService = Depends()
+    user_service: UserService = Depends(get_user_service),
 ):
     return await user_service.remove_roles(user_id, body.roles)
 
@@ -102,7 +106,7 @@ async def add_user_permissions(
     user_id: str,
     body: PermissionsUpdate,
     current_user: User = Depends(get_current_superuser),
-    user_service: UserService = Depends()
+    user_service: UserService = Depends(get_user_service),
 ):
     return await user_service.add_permissions(user_id, body.permissions)
 
@@ -112,6 +116,6 @@ async def remove_user_permissions(
     user_id: str,
     body: PermissionsUpdate,
     current_user: User = Depends(get_current_superuser),
-    user_service: UserService = Depends()
+    user_service: UserService = Depends(get_user_service),
 ):
     return await user_service.remove_permissions(user_id, body.permissions)

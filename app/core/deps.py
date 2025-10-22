@@ -1,17 +1,37 @@
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.core.security import verify_token
-from app.services.user_service import UserService
-from app.models.user import User
-from app.services.role_service import RoleService
 from typing import List
+
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+from app.core.security import verify_token
+from app.models.user import User
+from app.services.indicator_service import IndicatorService
+from app.services.role_service import RoleService
+from app.services.strategy_service import StrategyService
+from app.services.user_service import UserService
 
 security = HTTPBearer()
 
 
+def get_user_service() -> UserService:
+    return UserService()
+
+
+def get_role_service() -> RoleService:
+    return RoleService()
+
+
+def get_indicator_service() -> IndicatorService:
+    return IndicatorService()
+
+
+def get_strategy_service() -> StrategyService:
+    return StrategyService()
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    user_service: UserService = Depends()
+    user_service: UserService = Depends(get_user_service),
 ) -> User:
     """获取当前用户"""
     credentials_exception = HTTPException(
@@ -71,7 +91,7 @@ def require_roles(required_roles: List[str]):
 def require_permissions(required_permissions: List[str]):
     async def dependency(
         current_user: User = Depends(get_current_active_user),
-        role_service: RoleService = Depends()
+        role_service: RoleService = Depends(get_role_service),
     ) -> User:
         # 合并用户直接权限与角色权限
         effective_permissions = set(current_user.permissions or [])

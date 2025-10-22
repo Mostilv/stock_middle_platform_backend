@@ -2,6 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from app.core.deps import get_indicator_service
 from app.services.indicator_service import IndicatorService
 
 router = APIRouter(prefix="/indicators", tags=["指标展示"])
@@ -10,7 +11,7 @@ router = APIRouter(prefix="/indicators", tags=["指标展示"])
 @router.get("/stocks")
 async def get_stock_list(
     source: str = Query("akshare", description="数据源 akshare 或 baostock"),
-    service: IndicatorService = Depends(),
+    service: IndicatorService = Depends(get_indicator_service),
 ):
     """获取股票列表（无需认证）"""
     try:
@@ -27,7 +28,7 @@ async def get_stock_data(
     start_date: str = Query(..., description="开始日期 (YYYY-MM-DD)"),
     end_date: str = Query(..., description="结束日期 (YYYY-MM-DD)"),
     source: str = Query("akshare", description="数据源 akshare 或 baostock"),
-    service: IndicatorService = Depends(),
+    service: IndicatorService = Depends(get_indicator_service),
 ):
     """获取股票历史数据（无需认证）"""
     try:
@@ -45,7 +46,7 @@ async def get_stock_data(
 
 @router.get("/stocks/{stock_code}/realtime")
 async def get_stock_realtime(
-    stock_code: str, service: IndicatorService = Depends()
+    stock_code: str, service: IndicatorService = Depends(get_indicator_service)
 ):
     """获取股票实时数据（无需认证）"""
     try:
@@ -66,7 +67,7 @@ async def get_index_data(
     index_code: str,
     start_date: Optional[str] = Query(None, description="开始日期 (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="结束日期 (YYYY-MM-DD)"),
-    service: IndicatorService = Depends(),
+    service: IndicatorService = Depends(get_indicator_service),
 ):
     """获取指数数据（无需认证）"""
     try:
@@ -83,7 +84,9 @@ async def get_index_data(
 
 
 @router.get("/market/overview")
-async def get_market_overview(service: IndicatorService = Depends()):
+async def get_market_overview(
+    service: IndicatorService = Depends(get_indicator_service),
+):
     """获取市场概览（无需认证）"""
     try:
         return await service.get_market_overview()

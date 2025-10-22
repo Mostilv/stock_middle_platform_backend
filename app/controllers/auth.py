@@ -2,7 +2,7 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from app.core.security import create_access_token
-from app.core.deps import get_current_active_user
+from app.core.deps import get_current_active_user, get_user_service
 from app.services.user_service import UserService
 from app.models.user import User, UserCreate, Token
 
@@ -10,7 +10,9 @@ router = APIRouter(prefix="/auth", tags=["认证"])
 
 
 @router.post("/register", response_model=User)
-async def register(user_create: UserCreate, user_service: UserService = Depends()):
+async def register(
+    user_create: UserCreate, user_service: UserService = Depends(get_user_service)
+):
     """用户注册"""
     try:
         user = await user_service.create_user(user_create)
@@ -25,7 +27,7 @@ async def register(user_create: UserCreate, user_service: UserService = Depends(
 @router.post("/login", response_model=Token)
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
-    user_service: UserService = Depends()
+    user_service: UserService = Depends(get_user_service),
 ):
     """用户登录"""
     user = await user_service.authenticate_user(form_data.username, form_data.password)

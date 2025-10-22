@@ -48,7 +48,7 @@ class UserService:
         if not document:
             return None
 
-        user_in_db = UserInDB(**document)
+        user_in_db = UserInDB(**self._normalize_document(document))
         if not verify_password(password, user_in_db.hashed_password):
             return None
 
@@ -125,3 +125,10 @@ class UserService:
         document.setdefault("roles", [])
         document.setdefault("permissions", [])
         return User(**document)
+
+    @staticmethod
+    def _normalize_document(document: dict) -> dict:
+        normalized = dict(document)
+        if "_id" in normalized and not isinstance(normalized["_id"], str):
+            normalized["_id"] = str(normalized["_id"])
+        return normalized
