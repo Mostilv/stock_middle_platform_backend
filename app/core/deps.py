@@ -10,7 +10,7 @@ from app.services.role_service import RoleService
 from app.services.strategy_service import StrategyService
 from app.services.user_service import UserService
 
-security = HTTPBearer()
+security = HTTPBearer(scheme_name="BearerAuth")
 
 
 def get_user_service() -> UserService:

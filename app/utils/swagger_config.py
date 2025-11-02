@@ -49,7 +49,6 @@ def get_custom_openapi(app, title: str, version: str, description: str) -> Dict[
 
     openapi_schema.setdefault("components", {})
     openapi_schema["components"]["securitySchemes"] = SECURITY_SCHEMES
-    openapi_schema["security"] = [{"BearerAuth": []}]
     openapi_schema["tags"] = API_TAGS
     openapi_schema["servers"] = SERVERS
     return openapi_schema
