@@ -14,4 +14,3 @@ class BaseRepository:
         if not hasattr(self, "collection_name"):
             raise ValueError("Repository subclasses must define collection_name")
         self.collection = mongodb.db[self.collection_name]
-

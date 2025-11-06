@@ -9,37 +9,37 @@ from typing import Optional
 
 class UvicornConfig:
     """Uvicorn 配置类"""
-    
+
     def __init__(self):
         # 基础配置
         self.app = "app.main:app"
         self.host = os.getenv("UVICORN_HOST", "0.0.0.0")
         self.port = int(os.getenv("UVICORN_PORT", "8000"))
-        
+
         # 开发环境配置
         self.reload = os.getenv("UVICORN_RELOAD", "true").lower() == "true"
         self.reload_dirs = ["app", "scripts"]
         self.reload_exclude = ["*.pyc", "*.pyo", "__pycache__", ".git", ".venv"]
         self.reload_delay = 0.25
-        
+
         # 性能配置
         self.workers = int(os.getenv("UVICORN_WORKERS", "1"))
         self.loop = "asyncio"
         self.http = "httptools"
         self.ws = "websockets"
-        
+
         # 日志配置
         self.log_level = os.getenv("UVICORN_LOG_LEVEL", "info")
         self.access_log = os.getenv("UVICORN_ACCESS_LOG", "true").lower() == "true"
-        
+
         # 安全配置
         self.forwarded_allow_ips = "*"
         self.proxy_headers = True
-        
+
         # 超时配置
         self.timeout_keep_alive = 5
         self.timeout_graceful_shutdown = 30
-        
+
         # 开发环境特殊配置
         if self.reload:
             self.workers = 1  # 开发环境只使用单进程

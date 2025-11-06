@@ -12,14 +12,12 @@ if __name__ == "__main__":
     print("📖 ReDoc文档地址: http://localhost:8000/redoc")
     print("🔧 OpenAPI JSON: http://localhost:8000/openapi.json")
     print("=" * 50)
-    
+
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
         port=8000,
         reload=True,
         reload_dirs=["app"],
-        log_level="info"
+        log_level="info",
     )
-
-

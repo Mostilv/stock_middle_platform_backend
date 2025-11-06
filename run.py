@@ -19,19 +19,26 @@ def run_dev_server():
     print("🌐 访问地址: http://localhost:8000")
     print("📚 API文档: http://localhost:8000/docs")
     print()
-    
+
     cmd = [
-        sys.executable, "-m", "uvicorn",
+        sys.executable,
+        "-m",
+        "uvicorn",
         "app.main:app",
-        "--host", "0.0.0.0",
-        "--port", "8000",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
         "--reload",
-        "--reload-dir", "app",
-        "--reload-dir", "scripts",
-        "--log-level", "info",
-        "--access-log"
+        "--reload-dir",
+        "app",
+        "--reload-dir",
+        "scripts",
+        "--log-level",
+        "info",
+        "--access-log",
     ]
-    
+
     try:
         subprocess.run(cmd, check=True)
     except KeyboardInterrupt:
@@ -47,21 +54,32 @@ def run_prod_server():
     print("⚡ 多进程模式")
     print("🌐 访问地址: http://localhost:8000")
     print()
-    
+
     cmd = [
-        sys.executable, "-m", "uvicorn",
+        sys.executable,
+        "-m",
+        "uvicorn",
         "app.main:app",
-        "--host", "0.0.0.0",
-        "--port", "8000",
-        "--workers", "4",
-        "--loop", "asyncio",
-        "--http", "httptools",
-        "--ws", "websockets",
-        "--log-level", "info",
-        "--timeout-keep-alive", "5",
-        "--timeout-graceful-shutdown", "30"
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--workers",
+        "4",
+        "--loop",
+        "asyncio",
+        "--http",
+        "httptools",
+        "--ws",
+        "websockets",
+        "--log-level",
+        "info",
+        "--timeout-keep-alive",
+        "5",
+        "--timeout-graceful-shutdown",
+        "30",
     ]
-    
+
     try:
         subprocess.run(cmd, check=True)
     except KeyboardInterrupt:
@@ -77,19 +95,28 @@ def run_with_gunicorn():
     print("⚡ 企业级部署模式")
     print("🌐 访问地址: http://localhost:8000")
     print()
-    
+
     cmd = [
-        sys.executable, "-m", "gunicorn",
+        sys.executable,
+        "-m",
+        "gunicorn",
         "app.main:app",
-        "-w", "4",
-        "-k", "uvicorn.workers.UvicornWorker",
-        "--bind", "0.0.0.0:8000",
-        "--timeout", "120",
-        "--keep-alive", "5",
-        "--max-requests", "1000",
-        "--max-requests-jitter", "100"
+        "-w",
+        "4",
+        "-k",
+        "uvicorn.workers.UvicornWorker",
+        "--bind",
+        "0.0.0.0:8000",
+        "--timeout",
+        "120",
+        "--keep-alive",
+        "5",
+        "--max-requests",
+        "1000",
+        "--max-requests-jitter",
+        "100",
     ]
-    
+
     try:
         subprocess.run(cmd, check=True)
     except KeyboardInterrupt:
@@ -104,13 +131,15 @@ def check_dependencies():
     """检查依赖是否安装"""
     try:
         import uvicorn
+
         print("✅ Uvicorn 已安装")
     except ImportError:
         print("❌ Uvicorn 未安装，请运行: pip install uvicorn[standard]")
         sys.exit(1)
-    
+
     try:
         import fastapi
+
         print("✅ FastAPI 已安装")
     except ImportError:
         print("❌ FastAPI 未安装，请运行: pip install fastapi")
@@ -132,30 +161,26 @@ def main():
     """主函数"""
     parser = argparse.ArgumentParser(description="股票中间平台后端启动脚本")
     parser.add_argument(
-        "--mode", 
-        choices=["dev", "prod", "gunicorn"], 
+        "--mode",
+        choices=["dev", "prod", "gunicorn"],
         default="dev",
-        help="启动模式: dev(开发), prod(生产), gunicorn(企业级)"
+        help="启动模式: dev(开发), prod(生产), gunicorn(企业级)",
     )
-    parser.add_argument(
-        "--config", 
-        action="store_true",
-        help="显示配置信息"
-    )
-    
+    parser.add_argument("--config", action="store_true", help="显示配置信息")
+
     args = parser.parse_args()
-    
+
     # 显示欢迎信息
     print("🎯 股票中间平台后端")
     print("=" * 50)
-    
+
     # 检查依赖
     check_dependencies()
-    
+
     # 显示配置
     if args.config:
         show_config()
-    
+
     # 根据模式启动
     if args.mode == "dev":
         run_dev_server()

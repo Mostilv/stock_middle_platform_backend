@@ -8,8 +8,11 @@ from app.core.deps import (
 )
 from app.services.strategy_service import StrategyService
 from app.models.strategy import (
-    Strategy, StrategyCreate, StrategyUpdate, 
-    StrategySubscriptionResponse, StrategySubscriptionCreate
+    Strategy,
+    StrategyCreate,
+    StrategyUpdate,
+    StrategySubscriptionResponse,
+    StrategySubscriptionCreate,
 )
 from app.models.user import User
 
@@ -35,7 +38,9 @@ async def get_my_strategies(
     strategy_service: StrategyService = Depends(get_strategy_service),
 ):
     """获取我的策略列表"""
-    strategies = await strategy_service.get_strategies_by_user(current_user.id, skip=skip, limit=limit)
+    strategies = await strategy_service.get_strategies_by_user(
+        current_user.id, skip=skip, limit=limit
+    )
     return strategies
 
 
@@ -58,10 +63,7 @@ async def get_strategy(
     """获取策略详情（公开策略无需认证）"""
     strategy = await strategy_service.get_strategy_by_id(strategy_id)
     if not strategy:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="策略不存在"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="策略不存在")
     return strategy
 
 
@@ -73,11 +75,12 @@ async def update_strategy(
     strategy_service: StrategyService = Depends(get_strategy_service),
 ):
     """更新策略"""
-    strategy = await strategy_service.update_strategy(strategy_id, strategy_update, current_user.id)
+    strategy = await strategy_service.update_strategy(
+        strategy_id, strategy_update, current_user.id
+    )
     if not strategy:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="策略不存在或无权限"
+            status_code=status.HTTP_404_NOT_FOUND, detail="策略不存在或无权限"
         )
     return strategy
 
@@ -92,8 +95,7 @@ async def delete_strategy(
     success = await strategy_service.delete_strategy(strategy_id, current_user.id)
     if not success:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="策略不存在或无权限"
+            status_code=status.HTTP_404_NOT_FOUND, detail="策略不存在或无权限"
         )
     return {"message": "策略删除成功"}
 
@@ -107,15 +109,11 @@ async def subscribe_strategy(
     """订阅策略"""
     try:
         subscription = await strategy_service.subscribe_strategy(
-            StrategySubscriptionCreate(strategy_id=strategy_id),
-            current_user.id
+            StrategySubscriptionCreate(strategy_id=strategy_id), current_user.id
         )
         return subscription
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.delete("/{strategy_id}/unsubscribe")
@@ -127,10 +125,7 @@ async def unsubscribe_strategy(
     """取消订阅策略"""
     success = await strategy_service.unsubscribe_strategy(strategy_id, current_user.id)
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="订阅不存在"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="订阅不存在")
     return {"message": "取消订阅成功"}
 
 

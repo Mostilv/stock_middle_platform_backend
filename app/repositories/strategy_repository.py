@@ -15,7 +15,9 @@ class StrategyRepository(BaseRepository):
 
     def __init__(self) -> None:
         super().__init__()
-        self.subscription_collection = self.collection.database["strategy_subscriptions"]
+        self.subscription_collection = self.collection.database[
+            "strategy_subscriptions"
+        ]
 
     async def find_by_id(self, strategy_id: str) -> Optional[Dict[str, Any]]:
         if not ObjectId.is_valid(strategy_id):
@@ -57,7 +59,9 @@ class StrategyRepository(BaseRepository):
         result = await self.collection.delete_one({"_id": ObjectId(strategy_id)})
         return result.deleted_count > 0
 
-    async def find_subscription(self, user_id: str, strategy_id: str) -> Optional[Dict[str, Any]]:
+    async def find_subscription(
+        self, user_id: str, strategy_id: str
+    ) -> Optional[Dict[str, Any]]:
         if not ObjectId.is_valid(strategy_id):
             return None
         return await self.subscription_collection.find_one(
@@ -68,10 +72,14 @@ class StrategyRepository(BaseRepository):
         result = await self.subscription_collection.insert_one(document)
         return str(result.inserted_id)
 
-    async def find_subscription_by_id(self, subscription_id: str) -> Optional[Dict[str, Any]]:
+    async def find_subscription_by_id(
+        self, subscription_id: str
+    ) -> Optional[Dict[str, Any]]:
         if not ObjectId.is_valid(subscription_id):
             return None
-        return await self.subscription_collection.find_one({"_id": ObjectId(subscription_id)})
+        return await self.subscription_collection.find_one(
+            {"_id": ObjectId(subscription_id)}
+        )
 
     async def delete_subscription(self, user_id: str, strategy_id: str) -> bool:
         result = await self.subscription_collection.delete_one(

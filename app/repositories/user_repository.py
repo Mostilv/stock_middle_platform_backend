@@ -60,7 +60,9 @@ class UserRepository(BaseRepository):
         )
         return True
 
-    async def pull_from_set(self, user_id: str, field: str, values: Iterable[str]) -> bool:
+    async def pull_from_set(
+        self, user_id: str, field: str, values: Iterable[str]
+    ) -> bool:
         if not ObjectId.is_valid(user_id):
             return False
         now = datetime.utcnow()
@@ -72,4 +74,3 @@ class UserRepository(BaseRepository):
             },
         )
         return True
-

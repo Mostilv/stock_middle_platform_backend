@@ -25,7 +25,9 @@ def get_admin_credentials() -> Tuple[str, str, str, str]:
 async def create_superuser() -> None:
     try:
         if not await mongodb.connect_to_mongo():
-            print("Failed to connect to MongoDB. Check your connection settings and try again.")
+            print(
+                "Failed to connect to MongoDB. Check your connection settings and try again."
+            )
             return
 
         if isinstance(db_manager.mongodb_db, InMemoryDatabase):

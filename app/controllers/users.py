@@ -33,10 +33,7 @@ async def get_user(
     """获取用户信息（仅管理员）"""
     user = await user_service.get_user_by_id(user_id)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="用户不存在"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
     return user
 
 
@@ -50,10 +47,7 @@ async def update_user(
     """更新用户信息（仅管理员）"""
     user = await user_service.update_user(user_id, user_update)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="用户不存在"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
     return user
 
 
@@ -66,10 +60,7 @@ async def delete_user(
     """删除用户（仅管理员）"""
     success = await user_service.delete_user(user_id)
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="用户不存在"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
     return {"message": "用户删除成功"}
 
 

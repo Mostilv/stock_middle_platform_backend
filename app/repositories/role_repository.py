@@ -43,4 +43,3 @@ class RoleRepository(BaseRepository):
     async def list_roles(self, skip: int, limit: int):
         cursor = self.collection.find().skip(skip).limit(limit)
         return cursor
-

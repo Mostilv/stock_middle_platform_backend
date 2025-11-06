@@ -81,7 +81,4 @@ async def health_check():
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    return JSONResponse(
-        status_code=500,
-        content={"detail": f"服务器内部错误: {exc}"}
-    )
+    return JSONResponse(status_code=500, content={"detail": f"服务器内部错误: {exc}"})

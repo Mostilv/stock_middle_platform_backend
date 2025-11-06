@@ -40,33 +40,43 @@ class PortfolioAdjustment(BaseModel):
     strategy_name: str = Field(..., description="策略名称")
     user_id: int = Field(..., description="用户ID")
     adjustment_date: datetime = Field(..., description="调仓日期")
-    adjustment_type: str = Field(..., description="调仓类型：rebalance/stock_pick/risk_control")
-    
+    adjustment_type: str = Field(
+        ..., description="调仓类型：rebalance/stock_pick/risk_control"
+    )
+
     # 调仓前持仓
-    before_positions: List[Position] = Field(default_factory=list, description="调仓前持仓")
+    before_positions: List[Position] = Field(
+        default_factory=list, description="调仓前持仓"
+    )
     before_total_value: float = Field(..., description="调仓前总市值")
     before_cash: float = Field(..., description="调仓前现金")
-    
+
     # 调仓后持仓
-    after_positions: List[Position] = Field(default_factory=list, description="调仓后持仓")
+    after_positions: List[Position] = Field(
+        default_factory=list, description="调仓后持仓"
+    )
     after_total_value: float = Field(..., description="调仓后总市值")
     after_cash: float = Field(..., description="调仓后现金")
-    
+
     # 调仓操作
-    buy_orders: List[Dict[str, Any]] = Field(default_factory=list, description="买入订单")
-    sell_orders: List[Dict[str, Any]] = Field(default_factory=list, description="卖出订单")
-    
+    buy_orders: List[Dict[str, Any]] = Field(
+        default_factory=list, description="买入订单"
+    )
+    sell_orders: List[Dict[str, Any]] = Field(
+        default_factory=list, description="卖出订单"
+    )
+
     # 调仓原因和备注
     reason: str = Field(..., description="调仓原因")
     notes: Optional[str] = Field(None, description="备注")
-    
+
     # 风控信息
     risk_metrics: Dict[str, Any] = Field(default_factory=dict, description="风控指标")
-    
+
     # 元数据
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
-    
+
     class Config:
         allow_population_by_field_name = True
         arbitrary_types_allowed = True
@@ -138,7 +148,7 @@ class PortfolioSnapshot(BaseModel):
     daily_pnl: float = Field(..., description="日盈亏")
     daily_pnl_ratio: float = Field(..., description="日盈亏比例")
     created_at: datetime = Field(default_factory=datetime.now)
-    
+
     class Config:
         allow_population_by_field_name = True
         arbitrary_types_allowed = True

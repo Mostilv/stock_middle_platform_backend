@@ -73,9 +73,13 @@ class IndicatorService:
             market_data[code] = {
                 "name": name,
                 "code": code,
-                "latest_price": IndicatorService._to_serialisable(latest.get("close", 0)),
+                "latest_price": IndicatorService._to_serialisable(
+                    latest.get("close", 0)
+                ),
                 "change": IndicatorService._to_serialisable(latest.get("change", 0)),
-                "change_pct": IndicatorService._to_serialisable(latest.get("pct_chg", 0)),
+                "change_pct": IndicatorService._to_serialisable(
+                    latest.get("pct_chg", 0)
+                ),
                 "volume": IndicatorService._to_serialisable(latest.get("volume", 0)),
                 "amount": IndicatorService._to_serialisable(latest.get("amount", 0)),
             }
@@ -114,10 +118,12 @@ class IndicatorService:
                 pass
 
         if isinstance(value, dict):
-            return {key: IndicatorService._to_serialisable(item) for key, item in value.items()}
+            return {
+                key: IndicatorService._to_serialisable(item)
+                for key, item in value.items()
+            }
 
         if isinstance(value, list):
             return [IndicatorService._to_serialisable(item) for item in value]
 
         return value
-

@@ -54,7 +54,9 @@ class UserService:
 
         return self._document_to_user(document)
 
-    async def update_user(self, user_id: str, user_update: UserUpdate) -> Optional[User]:
+    async def update_user(
+        self, user_id: str, user_update: UserUpdate
+    ) -> Optional[User]:
         update_data = user_update.dict(exclude_unset=True)
         if not update_data:
             return await self.get_user_by_id(user_id)

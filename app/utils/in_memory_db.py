@@ -39,7 +39,9 @@ class DeleteResult:
 
 
 class InMemoryCursor:
-    def __init__(self, collection: "InMemoryCollection", filter_query: Dict[str, Any]) -> None:
+    def __init__(
+        self, collection: "InMemoryCollection", filter_query: Dict[str, Any]
+    ) -> None:
         self._collection = collection
         self._filter = filter_query or {}
         self._skip = 0
@@ -123,7 +125,9 @@ class InMemoryCollection:
         await asyncio.sleep(0)
         return InsertOneResult(new_document["_id"])
 
-    async def update_one(self, filter_query: Dict[str, Any], update_doc: Dict[str, Any]) -> UpdateResult:
+    async def update_one(
+        self, filter_query: Dict[str, Any], update_doc: Dict[str, Any]
+    ) -> UpdateResult:
         modified_count = 0
         for document in self._documents:
             if not _matches(document, filter_query):
@@ -156,12 +160,17 @@ class InMemoryCollection:
                         current_values = document.get(field, [])
                         if isinstance(current_values, list):
                             original_length = len(current_values)
-                            document[field] = [item for item in current_values if item not in values]
+                            document[field] = [
+                                item for item in current_values if item not in values
+                            ]
                             if len(document[field]) != original_length:
                                 updated = True
                     else:
                         current_values = document.get(field, [])
-                        if isinstance(current_values, list) and payload in current_values:
+                        if (
+                            isinstance(current_values, list)
+                            and payload in current_values
+                        ):
                             current_values.remove(payload)
                             updated = True
 

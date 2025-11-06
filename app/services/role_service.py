@@ -40,7 +40,9 @@ class RoleService:
             roles.append(self._document_to_role(document))
         return roles
 
-    async def update_role(self, role_id: str, role_update: RoleUpdate) -> Optional[Role]:
+    async def update_role(
+        self, role_id: str, role_update: RoleUpdate
+    ) -> Optional[Role]:
         update_data = role_update.dict(exclude_unset=True)
         if not update_data:
             return await self.get_role_by_id(role_id)

@@ -7,14 +7,15 @@ import requests
 import json
 import time
 
+
 def test_swagger_complete():
     """完整测试Swagger功能"""
-    
+
     base_url = "http://localhost:8000"
-    
+
     print("🚀 股票中间平台后端 - Swagger功能测试")
     print("=" * 60)
-    
+
     # 测试根路径
     print("1️⃣ 测试根路径...")
     try:
@@ -29,9 +30,9 @@ def test_swagger_complete():
             print(f"   ❌ 根路径访问失败: {response.status_code}")
     except Exception as e:
         print(f"   ❌ 根路径测试异常: {e}")
-    
+
     print()
-    
+
     # 测试健康检查
     print("2️⃣ 测试健康检查...")
     try:
@@ -45,9 +46,9 @@ def test_swagger_complete():
             print(f"   ❌ 健康检查失败: {response.status_code}")
     except Exception as e:
         print(f"   ❌ 健康检查测试异常: {e}")
-    
+
     print()
-    
+
     # 测试OpenAPI规范
     print("3️⃣ 测试OpenAPI规范...")
     try:
@@ -59,27 +60,29 @@ def test_swagger_complete():
             print(f"   📋 版本: {data.get('info', {}).get('version', 'N/A')}")
             print(f"   🏷️ 标签数量: {len(data.get('tags', []))}")
             print(f"   🛣️ 路径数量: {len(data.get('paths', {}))}")
-            
+
             # 显示标签信息
-            tags = data.get('tags', [])
+            tags = data.get("tags", [])
             if tags:
                 print("   📑 API标签:")
                 for tag in tags:
                     print(f"      - {tag.get('name')}: {tag.get('description')}")
-            
+
             # 显示安全配置
-            security_schemes = data.get('components', {}).get('securitySchemes', {})
+            security_schemes = data.get("components", {}).get("securitySchemes", {})
             if security_schemes:
                 print("   🔐 安全配置:")
                 for scheme_name, scheme_info in security_schemes.items():
-                    print(f"      - {scheme_name}: {scheme_info.get('type')} ({scheme_info.get('scheme')})")
+                    print(
+                        f"      - {scheme_name}: {scheme_info.get('type')} ({scheme_info.get('scheme')})"
+                    )
         else:
             print(f"   ❌ OpenAPI规范获取失败: {response.status_code}")
     except Exception as e:
         print(f"   ❌ OpenAPI规范测试异常: {e}")
-    
+
     print()
-    
+
     # 测试Swagger UI
     print("4️⃣ 测试Swagger UI...")
     try:
@@ -91,9 +94,9 @@ def test_swagger_complete():
             print(f"   ❌ Swagger UI访问失败: {response.status_code}")
     except Exception as e:
         print(f"   ❌ Swagger UI测试异常: {e}")
-    
+
     print()
-    
+
     # 测试ReDoc
     print("5️⃣ 测试ReDoc...")
     try:
@@ -105,31 +108,35 @@ def test_swagger_complete():
             print(f"   ❌ ReDoc访问失败: {response.status_code}")
     except Exception as e:
         print(f"   ❌ ReDoc测试异常: {e}")
-    
+
     print()
-    
+
     # 测试API端点
     print("6️⃣ 测试API端点...")
     api_endpoints = [
         "/api/v1/auth/register",
-        "/api/v1/auth/login", 
+        "/api/v1/auth/login",
         "/api/v1/auth/me",
         "/api/v1/users/",
         "/api/v1/roles/",
         "/api/v1/strategies/",
-        "/api/v1/indicators/"
+        "/api/v1/indicators/",
     ]
-    
+
     for endpoint in api_endpoints:
         try:
             response = requests.get(f"{base_url}{endpoint}")
-            if response.status_code in [200, 401, 422]:  # 200成功，401未授权，422参数错误都是正常的
+            if response.status_code in [
+                200,
+                401,
+                422,
+            ]:  # 200成功，401未授权，422参数错误都是正常的
                 print(f"   ✅ {endpoint} - 状态码: {response.status_code}")
             else:
                 print(f"   ⚠️ {endpoint} - 状态码: {response.status_code}")
         except Exception as e:
             print(f"   ❌ {endpoint} - 异常: {e}")
-    
+
     print()
     print("=" * 60)
     print("🎯 测试完成！")
@@ -147,6 +154,6 @@ def test_swagger_complete():
     print()
     print("🎉 Swagger集成成功！享受更好的API开发体验！")
 
+
 if __name__ == "__main__":
     test_swagger_complete()
-

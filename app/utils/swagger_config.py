@@ -36,7 +36,9 @@ SERVERS: List[Dict[str, str]] = [
 ]
 
 
-def get_custom_openapi(app, title: str, version: str, description: str) -> Dict[str, Any]:
+def get_custom_openapi(
+    app, title: str, version: str, description: str
+) -> Dict[str, Any]:
     if app.openapi_schema:
         return app.openapi_schema
 
