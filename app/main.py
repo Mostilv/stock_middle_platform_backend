@@ -2,7 +2,6 @@ from datetime import datetime
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import JSONResponse
 
 from app.controllers import auth, indicators, roles, strategies, users
@@ -12,7 +11,6 @@ from app.utils.swagger_config import (
     get_api_tags,
     get_custom_openapi,
     get_servers,
-    get_swagger_ui_parameters,
 )
 
 app = FastAPI(
@@ -50,17 +48,6 @@ def _custom_openapi():
 
 
 app.openapi = _custom_openapi
-
-
-@app.get("/docs", include_in_schema=False)
-async def custom_swagger_ui_html():
-    return get_swagger_ui_html(
-        openapi_url=app.openapi_url,
-        title=f"{app.title} - Swagger UI",
-        swagger_ui_parameters=get_swagger_ui_parameters(),
-        swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui-bundle.js",
-        swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui.css",
-    )
 
 
 @app.get("/", tags=["系统监控"])
