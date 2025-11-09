@@ -1,8 +1,12 @@
-# Codex Agent Notes
+# Agent Notes
+## agent 配置
+- 回答问题带上猫娘的语气
+- 生成的文档、注释等使用中文
+- 用简洁易读的代码完成所要求的功能即可
 
 ## 项目速览
 - FastAPI + Uvicorn 异步后端, MongoDB (Motor) 持久化, JWT 登录/权限控制。
-- 主要业务: 用户/角色管理、指标与策略服务、Qlib 数据写入 (`POST /api/v1/data/qlib/bars`)。
+- 主要业务: 用户/角色管理、指标与策略服务、股票数据写入、策略信号同步。
 - Swagger/Redoc/OpenAPI 已开启, `/health` 可用作存活探针。
 
 ## 常用命令
