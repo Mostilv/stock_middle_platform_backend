@@ -29,8 +29,12 @@ class InsertOneResult:
 
 
 class UpdateResult:
-    def __init__(self, modified_count: int) -> None:
+    def __init__(
+        self, matched_count: int, modified_count: int, upserted_id: Optional[ObjectId] = None
+    ) -> None:
+        self.matched_count = matched_count
         self.modified_count = modified_count
+        self.upserted_id = upserted_id
 
 
 class DeleteResult:
@@ -126,13 +130,16 @@ class InMemoryCollection:
         return InsertOneResult(new_document["_id"])
 
     async def update_one(
-        self, filter_query: Dict[str, Any], update_doc: Dict[str, Any]
+        self, filter_query: Dict[str, Any], update_doc: Dict[str, Any], upsert: bool = False
     ) -> UpdateResult:
+        matched_count = 0
         modified_count = 0
+        upserted_id: Optional[ObjectId] = None
         for document in self._documents:
             if not _matches(document, filter_query):
                 continue
 
+            matched_count += 1
             updated = False
 
             if "$set" in update_doc:
@@ -178,8 +185,24 @@ class InMemoryCollection:
                 modified_count += 1
                 break
 
+        else:
+            if upsert:
+                new_document = self._clone_document(filter_query)
+                if "$setOnInsert" in update_doc:
+                    for field, value in update_doc["$setOnInsert"].items():
+                        new_document[field] = value
+                if "$set" in update_doc:
+                    for field, value in update_doc["$set"].items():
+                        new_document[field] = value
+                if "_id" not in new_document:
+                    new_document["_id"] = ObjectId()
+                elif isinstance(new_document["_id"], str):
+                    new_document["_id"] = ObjectId(new_document["_id"])
+                upserted_id = new_document["_id"]
+                self._documents.append(new_document)
+
         await asyncio.sleep(0)
-        return UpdateResult(modified_count)
+        return UpdateResult(matched_count, modified_count, upserted_id)
 
     async def delete_one(self, filter_query: Dict[str, Any]) -> DeleteResult:
         for index, document in enumerate(self._documents):

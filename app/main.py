@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.controllers import auth, indicators, roles, strategies, users
+from app.controllers import auth, data_feed, indicators, roles, strategies, users
 from app.config import settings
 from app.db import db_connection_manager, lifespan
 from app.utils.swagger_config import (
@@ -41,6 +41,7 @@ app.include_router(users.router, prefix=settings.api_v1_str, tags=["用户管理
 app.include_router(roles.router, prefix=settings.api_v1_str, tags=["用户管理"])
 app.include_router(strategies.router, prefix=settings.api_v1_str, tags=["策略管理"])
 app.include_router(indicators.router, prefix=settings.api_v1_str, tags=["技术指标"])
+app.include_router(data_feed.router, prefix=settings.api_v1_str, tags=["数据接入"])
 
 
 def _custom_openapi():

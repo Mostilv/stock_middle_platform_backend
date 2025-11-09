@@ -6,6 +6,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.core.security import verify_token
 from app.models.user import User
 from app.services.indicator_service import IndicatorService
+from app.services.qlib_data_service import QlibDataIngestionService
 from app.services.role_service import RoleService
 from app.services.strategy_service import StrategyService
 from app.services.user_service import UserService
@@ -27,6 +28,10 @@ def get_indicator_service() -> IndicatorService:
 
 def get_strategy_service() -> StrategyService:
     return StrategyService()
+
+
+def get_qlib_data_service() -> QlibDataIngestionService:
+    return QlibDataIngestionService()
 
 
 async def get_current_user(

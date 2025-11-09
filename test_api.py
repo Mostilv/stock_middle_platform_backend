@@ -66,6 +66,37 @@ def test_strategies(token):
     print(f"创建策略: {response.status_code} - {response.json()}")
 
 
+def test_qlib_data_ingest(token):
+    """测试qlib数据接入接口"""
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = {
+        "provider": "test-feed",
+        "market": "cn",
+        "records": [
+            {
+                "instrument": "SH600519",
+                "datetime": "2024-10-08T15:00:00+08:00",
+                "freq": "1d",
+                "open": 1600.5,
+                "high": 1611.2,
+                "low": 1590.0,
+                "close": 1605.4,
+                "volume": 123456,
+                "amount": 987654321,
+                "factor": 1.0,
+                "turnover": 0.35,
+                "limit_status": "none",
+                "suspended": False,
+                "extra_fields": {"Ref(close,1)": 1588.1},
+            }
+        ],
+    }
+    response = requests.post(
+        f"{BASE_URL}/data/qlib/bars", json=payload, headers=headers
+    )
+    print(f"推送qlib数据: {response.status_code} - {response.json()}")
+
+
 def main():
     """主测试函数"""
     print("开始API测试...")
@@ -85,6 +116,7 @@ def main():
     if token:
         # 测试策略API（需要认证）
         test_strategies(token)
+        test_qlib_data_ingest(token)
 
     print("API测试完成！")
 

@@ -24,6 +24,7 @@ Shared configuration, domain models, and utilities remain under `app/config`, `a
 |-- app
 |   |-- controllers
 |   |   |-- auth.py
+|   |   |-- data_feed.py
 |   |   |-- indicators.py
 |   |   |-- roles.py
 |   |   |-- strategies.py
@@ -31,12 +32,14 @@ Shared configuration, domain models, and utilities remain under `app/config`, `a
 |   |   +-- __init__.py
 |   |-- services
 |   |   |-- indicator_service.py
+|   |   |-- qlib_data_service.py
 |   |   |-- role_service.py
 |   |   |-- strategy_service.py
 |   |   |-- user_service.py
 |   |   +-- __init__.py
 |   |-- repositories
 |   |   |-- base.py
+|   |   |-- qlib_data_repository.py
 |   |   |-- role_repository.py
 |   |   |-- strategy_repository.py
 |   |   |-- user_repository.py
@@ -86,6 +89,45 @@ Legacy assets formerly kept inside `stock-system/` have been removed to avoid ne
 - ReDoc: `/redoc`
 - OpenAPI JSON: `/openapi.json`
 - Health check: `/health`
+- Qlib data ingest: `POST /api/v1/data/qlib/bars` (requires Bearer token)
+
+## Qlib 数据接入接口
+The `/api/v1/data/qlib/bars` endpoint accepts the same column names used by [Microsoft Qlib](https://github.com/microsoft/qlib) for stock data. Payloads must include a Bearer token (JWT) issued by this service.
+
+Example request:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/data/qlib/bars \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "provider": "partner-feed",
+        "market": "cn",
+        "timezone": "Asia/Shanghai",
+        "records": [
+          {
+            "instrument": "SH600519",
+            "datetime": "2024-10-08T15:00:00+08:00",
+            "freq": "1d",
+            "open": 1600.5,
+            "high": 1611.2,
+            "low": 1590.0,
+            "close": 1605.4,
+            "volume": 123456,
+            "amount": 987654321,
+            "factor": 1.0,
+            "turnover": 0.35,
+            "limit_status": "none",
+            "suspended": false,
+            "extra_fields": {
+              "Ref(close,1)": 1588.1
+            }
+          }
+        ]
+      }'
+```
+
+The API normalizes instruments to uppercase, converts timestamps to UTC before persistence, and upserts on the `(instrument, freq, datetime)` compound key so repeated submissions remain idempotent.
 
 ## Default Account
 - Username: `admin`
