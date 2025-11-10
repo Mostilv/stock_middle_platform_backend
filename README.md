@@ -39,6 +39,7 @@ Shared configuration, domain models, and utilities remain under `app/config`, `a
 |   |   +-- __init__.py
 |   |-- repositories
 |   |   |-- base.py
+|   |   |-- indicator_repository.py
 |   |   |-- qlib_data_repository.py
 |   |   |-- role_repository.py
 |   |   |-- strategy_repository.py
@@ -50,6 +51,7 @@ Shared configuration, domain models, and utilities remain under `app/config`, `a
 |   |-- example
 |   |-- main.py
 |   |-- models
+|   |   |-- indicator.py
 |   +-- utils
 |-- scripts
 |-- env.example
@@ -89,7 +91,9 @@ Legacy assets formerly kept inside `stock-system/` have been removed to avoid ne
 - ReDoc: `/redoc`
 - OpenAPI JSON: `/openapi.json`
 - Health check: `/health`
-- Qlib data ingest: `POST /api/v1/data/qlib/bars` (requires Bearer token)
+- Qlib data ingest: `POST /api/v1/data/qlib/bars`（需 Bearer Token）
+- Indicator ingest: `POST /api/v1/indicators/records`（需 `indicators:write` 权限）
+- Indicator query: `GET /api/v1/indicators/records`（需 `indicators:read` 权限）
 
 ## Qlib 数据接入接口
 The `/api/v1/data/qlib/bars` endpoint accepts the same column names used by [Microsoft Qlib](https://github.com/microsoft/qlib) for stock data. Payloads must include a Bearer token (JWT) issued by this service.
@@ -128,6 +132,52 @@ curl -X POST http://localhost:8000/api/v1/data/qlib/bars \
 ```
 
 The API normalizes instruments to uppercase, converts timestamps to UTC before persistence, and upserts on the `(instrument, freq, datetime)` compound key so repeated submissions remain idempotent.
+
+## 指标数据推送与查询
+指标计算已经外部化，本项目负责接收指标结果并提供统一查询。
+
+- 推送接口：`POST /api/v1/indicators/records`
+  - 权限要求：`indicators:write`
+  - 支持批量写入，同一 `(indicator, symbol, timeframe, timestamp)` 会覆盖
+  - `value`、`values`、`payload` 至少提供其一
+- 查询接口：`GET /api/v1/indicators/records`
+  - 权限要求：`indicators:read`
+  - 支持按指标、股票、时间范围、标签过滤
+  - 返回 `data + total` 结构，方便前端分页
+
+示例推送：
+
+```bash
+curl -X POST http://localhost:8000/api/v1/indicators/records \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "provider": "quant-service",
+        "records": [
+          {
+            "symbol": "SH600519",
+            "indicator": "rsi14",
+            "timeframe": "1d",
+            "timestamp": "2024-10-08T15:00:00+08:00",
+            "value": 56.17,
+            "values": {"overbought": 70, "oversold": 30},
+            "payload": {"window": 14},
+            "tags": ["daily", "demo"]
+          }
+        ]
+      }'
+```
+
+示例查询：
+
+```bash
+curl -G http://localhost:8000/api/v1/indicators/records \
+  -H "Authorization: Bearer <token>" \
+  --data-urlencode "indicator=rsi14" \
+  --data-urlencode "symbol=SH600519" \
+  --data-urlencode "timeframe=1d" \
+  --data-urlencode "limit=50"
+```
 
 ## Default Account
 - Username: `admin`

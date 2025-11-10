@@ -40,7 +40,7 @@ app.include_router(auth.router, prefix=settings.api_v1_str, tags=["认证"])
 app.include_router(users.router, prefix=settings.api_v1_str, tags=["用户管理"])
 app.include_router(roles.router, prefix=settings.api_v1_str, tags=["用户管理"])
 app.include_router(strategies.router, prefix=settings.api_v1_str, tags=["策略管理"])
-app.include_router(indicators.router, prefix=settings.api_v1_str, tags=["技术指标"])
+app.include_router(indicators.router, prefix=settings.api_v1_str, tags=["指标数据"])
 app.include_router(data_feed.router, prefix=settings.api_v1_str, tags=["数据接入"])
 
 

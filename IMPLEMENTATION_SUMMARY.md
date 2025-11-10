@@ -27,7 +27,7 @@
 - ✅ `/api/v1/users/*` - 用户管理
 - ✅ `/api/v1/roles/*` - 角色管理
 - ✅ `/api/v1/strategies/*` - 策略管理（带权限控制）
-- ✅ `/api/v1/indicators/*` - 指标展示
+- ✅ `/api/v1/indicators/*` - 指标数据推送与查询
 
 ### 5. 权限控制示例
 - ✅ 策略创建：需要 `strategies:write` 权限

@@ -1,129 +1,125 @@
-from typing import Dict, Optional, Tuple
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-import pandas as pd
-
-from app.utils.data_sources import data_source_manager
+from app.models.indicator import (
+    IndicatorPushRequest,
+    IndicatorQueryItem,
+    IndicatorQueryResponse,
+    IndicatorRecord,
+    IndicatorWriteSummary,
+)
+from app.repositories.indicator_repository import IndicatorDataRepository
 
 
 class IndicatorService:
-    def __init__(self, manager=data_source_manager) -> None:
-        self.manager = manager
+    """指标数据写入与查询服务"""
 
-    async def get_stock_list(self, source: str) -> Dict[str, object]:
-        data = (
-            self.manager.get_stock_list_bs()
-            if source == "baostock"
-            else self.manager.get_stock_list_ak()
+    DEFAULT_LIMIT = 100
+    MAX_LIMIT = 500
+
+    def __init__(
+        self, repository: Optional[IndicatorDataRepository] = None
+    ) -> None:
+        self.repository = repository or IndicatorDataRepository()
+
+    async def ingest(self, payload: IndicatorPushRequest) -> IndicatorWriteSummary:
+        """写入外部推送的指标数据"""
+        await self.repository.ensure_indexes()
+        documents = [
+            self._record_to_document(payload.provider, record)
+            for record in payload.records
+        ]
+        stats = await self.repository.upsert_many(documents)
+        return IndicatorWriteSummary(
+            total=len(documents),
+            matched=stats.get("matched", 0),
+            modified=stats.get("modified", 0),
+            upserted=stats.get("upserted", 0),
         )
-        if data is None:
-            raise ValueError("获取股票列表失败")
-        return self._format_collection(data)
 
-    async def get_stock_history(
-        self, stock_code: str, start_date: str, end_date: str, source: str
-    ) -> Dict[str, object]:
-        if source == "baostock":
-            data = self.manager.get_stock_data_bs(stock_code, start_date, end_date)
-        else:
-            data = self.manager.get_stock_data_ak(stock_code, start_date, end_date)
-
-        if data is None or (isinstance(data, pd.DataFrame) and data.empty):
-            raise LookupError("股票数据不存在")
-        return self._format_collection(data)
-
-    async def get_stock_realtime(self, stock_code: str) -> Dict[str, object]:
-        data = self.manager.get_stock_realtime_ak(stock_code)
-        if data is None:
-            raise LookupError("股票实时数据不存在")
-        return {"data": data}
-
-    async def get_index_data(
+    async def query(
         self,
-        index_code: str,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-    ) -> Dict[str, object]:
-        data = self.manager.get_index_data_ak(index_code)
-        if data is None or (isinstance(data, pd.DataFrame) and data.empty):
-            raise LookupError("指数数据不存在")
+        indicator: str,
+        symbol: Optional[str] = None,
+        timeframe: Optional[str] = None,
+        start: Optional[datetime] = None,
+        end: Optional[datetime] = None,
+        limit: Optional[int] = None,
+        skip: Optional[int] = None,
+        tags: Optional[List[str]] = None,
+    ) -> IndicatorQueryResponse:
+        """根据条件查询指标结果"""
+        if not indicator:
+            raise ValueError("indicator 为必填参数")
 
-        if start_date and end_date and isinstance(data, pd.DataFrame):
-            data = data[(data.index >= start_date) & (data.index <= end_date)]
-        return self._format_collection(data)
+        filters: Dict[str, Any] = {"indicator": indicator.strip().lower()}
 
-    async def get_market_overview(self) -> Dict[str, object]:
-        indices = {
-            "sh000001": "上证指数",
-            "sz399001": "深证成指",
-            "sz399006": "创业板指",
+        if symbol:
+            filters["symbol"] = symbol.strip().upper()
+
+        if timeframe:
+            filters["timeframe"] = timeframe.strip().lower()
+
+        ts_filters: Dict[str, datetime] = {}
+        if start:
+            ts_filters["$gte"] = self._normalize_timestamp(start)
+        if end:
+            ts_filters["$lte"] = self._normalize_timestamp(end)
+        if ts_filters:
+            filters["timestamp"] = ts_filters
+
+        if tags:
+            normalized_tags = [tag.strip().lower() for tag in tags if tag.strip()]
+            if normalized_tags:
+                filters["tags"] = {"$all": normalized_tags}
+
+        safe_limit = self._normalize_limit(limit)
+        safe_skip = self._normalize_skip(skip)
+
+        records, total = await self.repository.find_records(
+            filters, safe_skip, safe_limit
+        )
+        items = [self._document_to_model(document) for document in records]
+        return IndicatorQueryResponse(total=total, data=items)
+
+    def _record_to_document(
+        self, provider: str, record: IndicatorRecord
+    ) -> Dict[str, Any]:
+        timestamp = IndicatorRecord.normalize_timestamp(record.timestamp)
+        tags = sorted(set(record.tags))
+        return {
+            "indicator": record.indicator,
+            "symbol": record.symbol,
+            "timeframe": record.timeframe,
+            "timestamp": timestamp,
+            "value": record.value,
+            "values": record.values,
+            "payload": record.payload,
+            "tags": tags,
+            "provider": provider,
         }
 
-        market_data: Dict[str, object] = {}
-        for code, name in indices.items():
-            try:
-                dataset = self.manager.get_index_data_ak(code)
-            except Exception as exc:  # pragma: no cover - defensive
-                print(f"获取指数 {code} 数据失败: {exc}")
-                continue
-
-            if dataset is None or dataset.empty:
-                continue
-
-            latest = dataset.iloc[-1]
-            market_data[code] = {
-                "name": name,
-                "code": code,
-                "latest_price": IndicatorService._to_serialisable(
-                    latest.get("close", 0)
-                ),
-                "change": IndicatorService._to_serialisable(latest.get("change", 0)),
-                "change_pct": IndicatorService._to_serialisable(
-                    latest.get("pct_chg", 0)
-                ),
-                "volume": IndicatorService._to_serialisable(latest.get("volume", 0)),
-                "amount": IndicatorService._to_serialisable(latest.get("amount", 0)),
-            }
-
-        return {"data": market_data}
+    def _document_to_model(self, document: Dict[str, Any]) -> IndicatorQueryItem:
+        payload = dict(document)
+        if "_id" in payload:
+            payload["id"] = str(payload.pop("_id"))
+        payload.setdefault("tags", [])
+        payload.setdefault("values", {})
+        payload.setdefault("payload", {})
+        return IndicatorQueryItem(**payload)
 
     @staticmethod
-    def _format_collection(data) -> Dict[str, object]:
-        records, total = IndicatorService._normalize_data(data)
-        serialisable_records = IndicatorService._to_serialisable(records)
-        return {"data": serialisable_records, "total": total}
+    def _normalize_limit(value: Optional[int]) -> int:
+        if value is None:
+            return IndicatorService.DEFAULT_LIMIT
+        return max(1, min(value, IndicatorService.MAX_LIMIT))
 
     @staticmethod
-    def _normalize_data(data) -> Tuple[object, int]:
-        if isinstance(data, pd.DataFrame):
-            records = data.to_dict("records")
-            return records, len(records)
-
-        if isinstance(data, list):
-            return data, len(data)
-
-        if isinstance(data, dict):
-            return data, 1
-
-        return data or [], len(data) if hasattr(data, "__len__") else int(bool(data))
+    def _normalize_skip(value: Optional[int]) -> int:
+        if value is None:
+            return 0
+        return max(0, value)
 
     @staticmethod
-    def _to_serialisable(value):
-        if isinstance(value, pd.Timestamp):
-            return value.isoformat()
-
-        if hasattr(value, "item"):
-            try:
-                return value.item()
-            except Exception:  # pragma: no cover - defensive
-                pass
-
-        if isinstance(value, dict):
-            return {
-                key: IndicatorService._to_serialisable(item)
-                for key, item in value.items()
-            }
-
-        if isinstance(value, list):
-            return [IndicatorService._to_serialisable(item) for item in value]
-
-        return value
+    def _normalize_timestamp(value: datetime) -> datetime:
+        return IndicatorRecord.normalize_timestamp(value)

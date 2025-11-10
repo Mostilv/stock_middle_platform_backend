@@ -213,6 +213,11 @@ class InMemoryCollection:
         await asyncio.sleep(0)
         return DeleteResult(0)
 
+    async def count_documents(self, filter_query: Dict[str, Any]) -> int:
+        count = sum(1 for document in self._documents if _matches(document, filter_query))
+        await asyncio.sleep(0)
+        return count
+
     def find(self, filter_query: Optional[Dict[str, Any]] = None) -> InMemoryCursor:
         return InMemoryCursor(self, filter_query or {})
 

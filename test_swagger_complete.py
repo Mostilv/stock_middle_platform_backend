@@ -120,7 +120,7 @@ def test_swagger_complete():
         "/api/v1/users/",
         "/api/v1/roles/",
         "/api/v1/strategies/",
-        "/api/v1/indicators/",
+        "/api/v1/indicators/records",
     ]
 
     for endpoint in api_endpoints:

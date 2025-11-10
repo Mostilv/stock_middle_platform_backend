@@ -35,17 +35,40 @@ def test_login():
     return response.json().get("access_token") if response.status_code == 200 else None
 
 
-def test_indicators(token=None):
-    """测试指标API"""
-    headers = {"Authorization": f"Bearer {token}"} if token else {}
+def test_indicator_pipeline(token):
+    """测试指标推送与查询流程"""
+    headers = {"Authorization": f"Bearer {token}"}
 
-    # 测试获取股票列表
-    response = requests.get(f"{BASE_URL}/indicators/stocks", headers=headers)
-    print(f"获取股票列表: {response.status_code}")
+    payload = {
+        "provider": "demo-service",
+        "records": [
+            {
+                "symbol": "SH600519",
+                "indicator": "rsi14",
+                "timeframe": "1d",
+                "timestamp": "2024-10-08T15:00:00+08:00",
+                "value": 56.2,
+                "values": {"overbought": 70, "oversold": 30},
+                "payload": {"window": 14},
+                "tags": ["demo", "daily"],
+            }
+        ],
+    }
+    response = requests.post(
+        f"{BASE_URL}/indicators/records", json=payload, headers=headers
+    )
+    print(f"推送指标数据: {response.status_code} - {response.json()}")
 
-    # 测试获取市场概览
-    response = requests.get(f"{BASE_URL}/indicators/market/overview", headers=headers)
-    print(f"获取市场概览: {response.status_code}")
+    params = {
+        "indicator": "rsi14",
+        "symbol": "SH600519",
+        "timeframe": "1d",
+        "limit": 5,
+    }
+    response = requests.get(
+        f"{BASE_URL}/indicators/records", params=params, headers=headers
+    )
+    print(f"查询指标数据: {response.status_code} - {response.json()}")
 
 
 def test_strategies(token):
@@ -110,10 +133,9 @@ def main():
     # 测试用户登录
     token = test_login()
 
-    # 测试指标API（无需认证）
-    test_indicators()
-
     if token:
+        # 指标推送与查询（需要认证）
+        test_indicator_pipeline(token)
         # 测试策略API（需要认证）
         test_strategies(token)
         test_qlib_data_ingest(token)
