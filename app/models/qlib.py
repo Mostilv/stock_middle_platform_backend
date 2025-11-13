@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+import datetime as dt
 from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, root_validator, validator
@@ -27,7 +27,7 @@ _RESERVED_EXTRA_FIELDS = {
 
 class QlibStockRecord(BaseModel):
     instrument: str = Field(..., description="Qlib instrument code, e.g. SH600519.")
-    datetime: datetime = Field(
+    datetime: dt.datetime = Field(
         ..., description="Bar timestamp; tz-aware datetimes are converted into UTC."
     )
     freq: Literal["1d", "1m", "5m", "15m", "30m", "60m"] = Field(
@@ -84,10 +84,10 @@ class QlibStockRecord(BaseModel):
         return value
 
     @staticmethod
-    def normalize_datetime(dt: datetime) -> datetime:
-        if dt.tzinfo:
-            return dt.astimezone(timezone.utc).replace(tzinfo=None)
-        return dt
+    def normalize_datetime(value: dt.datetime) -> dt.datetime:
+        if value.tzinfo:
+            return value.astimezone(dt.timezone.utc).replace(tzinfo=None)
+        return value
 
 
 class QlibStockBatch(BaseModel):
