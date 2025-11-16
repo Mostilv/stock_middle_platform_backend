@@ -1,3 +1,4 @@
+import json
 from decouple import config
 
 
@@ -24,6 +25,41 @@ class Settings:
 
     baostock_user: str = config("BAOSTOCK_USER", default="anonymous")
     baostock_password: str = config("BAOSTOCK_PASSWORD", default="123456")
+
+    def __init__(self):
+        data_targets_raw = config("DATA_TARGETS", default="")
+        if data_targets_raw:
+            try:
+                parsed = json.loads(data_targets_raw)
+            except json.JSONDecodeError as exc:
+                raise ValueError("DATA_TARGETS 配置不是有效 JSON 字符串") from exc
+        else:
+            parsed = {
+                "stock_basic": {
+                    "primary": {
+                        "database": self.mongodb_db,
+                        "collection": "stock_basic",
+                        "description": "默认股票基础信息库",
+                    }
+                },
+                "stock_kline": {
+                    "primary": {
+                        "database": self.mongodb_db,
+                        "collection": "stock_kline",
+                        "description": "默认股票 K 线数据集",
+                    }
+                },
+                "indicator": {
+                    "primary": {
+                        "database": self.mongodb_db,
+                        "collection": "indicator_data",
+                        "description": "默认指标结果库",
+                    }
+                },
+            }
+        if not isinstance(parsed, dict):
+            raise ValueError("DATA_TARGETS 应为字典格式")
+        self.data_targets = parsed
 
 
 settings = Settings()

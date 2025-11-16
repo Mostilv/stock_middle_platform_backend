@@ -69,10 +69,18 @@ class IndicatorRecord(BaseModel):
 class IndicatorPushRequest(BaseModel):
     """批量推送指标请求"""
 
+    target: str = Field("primary", description="数据写入目标别名")
     provider: str = Field(
         "external", description="推送来源标识，用于追踪数据渠道"
     )
     records: List[IndicatorRecord] = Field(..., description="指标记录列表")
+
+    @validator("target")
+    def normalize_target(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if not normalized:
+            raise ValueError("target 不能为空")
+        return normalized
 
     @validator("provider")
     def normalize_provider(cls, value: str) -> str:

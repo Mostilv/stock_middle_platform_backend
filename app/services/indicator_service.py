@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from app.core.data_sinks import DataSinkRegistry, data_sink_registry
 from app.models.indicator import (
     IndicatorPushRequest,
     IndicatorQueryItem,
@@ -18,18 +19,23 @@ class IndicatorService:
     MAX_LIMIT = 500
 
     def __init__(
-        self, repository: Optional[IndicatorDataRepository] = None
+        self,
+        repository: Optional[IndicatorDataRepository] = None,
+        registry: Optional[DataSinkRegistry] = None,
     ) -> None:
-        self.repository = repository or IndicatorDataRepository()
+        self.registry = registry or data_sink_registry
+        self._default_repository = repository
+        self._repositories: Dict[str, IndicatorDataRepository] = {}
 
     async def ingest(self, payload: IndicatorPushRequest) -> IndicatorWriteSummary:
         """写入外部推送的指标数据"""
-        await self.repository.ensure_indexes()
+        repository = self._get_repository(payload.target)
+        await repository.ensure_indexes()
         documents = [
             self._record_to_document(payload.provider, record)
             for record in payload.records
         ]
-        stats = await self.repository.upsert_many(documents)
+        stats = await repository.upsert_many(documents)
         return IndicatorWriteSummary(
             total=len(documents),
             matched=stats.get("matched", 0),
@@ -47,6 +53,7 @@ class IndicatorService:
         limit: Optional[int] = None,
         skip: Optional[int] = None,
         tags: Optional[List[str]] = None,
+        target: str = "primary",
     ) -> IndicatorQueryResponse:
         """根据条件查询指标结果"""
         if not indicator:
@@ -76,7 +83,8 @@ class IndicatorService:
         safe_limit = self._normalize_limit(limit)
         safe_skip = self._normalize_skip(skip)
 
-        records, total = await self.repository.find_records(
+        repository = self._get_repository(target)
+        records, total = await repository.find_records(
             filters, safe_skip, safe_limit
         )
         items = [self._document_to_model(document) for document in records]
@@ -123,3 +131,17 @@ class IndicatorService:
     @staticmethod
     def _normalize_timestamp(value: datetime) -> datetime:
         return IndicatorRecord.normalize_timestamp(value)
+
+    def _get_repository(self, target: Optional[str]) -> IndicatorDataRepository:
+        key = (target or "primary").lower()
+        if key in self._repositories:
+            return self._repositories[key]
+
+        if key == "primary" and self._default_repository:
+            self._repositories[key] = self._default_repository
+            return self._default_repository
+
+        collection = self.registry.get_collection("indicator", key)
+        repository = IndicatorDataRepository(collection=collection)
+        self._repositories[key] = repository
+        return repository

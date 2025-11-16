@@ -16,6 +16,8 @@ class DatabaseManager:
         self.mongodb_client: Optional[AsyncIOMotorClient] = None
         self.mongodb_db: Optional[AsyncIOMotorDatabase] = None
         self._connected: bool = False
+        self._default_db_name = settings.mongodb_db
+        self._memory_databases: Dict[str, InMemoryDatabase] = {}
 
     async def connect_mongodb(self) -> bool:
         """Initialise the MongoDB client and verify availability."""
@@ -35,6 +37,7 @@ class DatabaseManager:
                 self.mongodb_client = None
                 if not isinstance(self.mongodb_db, InMemoryDatabase):
                     self.mongodb_db = InMemoryDatabase()
+                self._memory_databases = {self._default_db_name: self.mongodb_db}
                 self._connected = True
                 logger.info("Using in-memory MongoDB mock database.")
                 return True
@@ -47,6 +50,7 @@ class DatabaseManager:
 
         self.mongodb_client = client
         self.mongodb_db = client[settings.mongodb_db]
+        self._memory_databases = {}
         self._connected = True
         logger.info("Connected to MongoDB database '%s'", settings.mongodb_db)
         return True
@@ -65,6 +69,7 @@ class DatabaseManager:
             logger.info("MongoDB connection closed")
         self.mongodb_client = None
         self.mongodb_db = None
+        self._memory_databases = {}
         self._connected = False
 
     async def disconnect_all(self) -> None:
@@ -89,10 +94,26 @@ class DatabaseManager:
 
         return status
 
-    def get_mongodb_collection(self, name: str):
-        if self.mongodb_db is None:
+    def get_database(self, name: Optional[str] = None):
+        if not name or name == self._default_db_name:
+            if self.mongodb_db is None:
+                raise RuntimeError("MongoDB is not connected.")
+            return self.mongodb_db
+
+        if isinstance(self.mongodb_db, InMemoryDatabase):
+            if name not in self._memory_databases:
+                self._memory_databases[name] = InMemoryDatabase()
+            return self._memory_databases[name]
+
+        if self.mongodb_client is None:
             raise RuntimeError("MongoDB is not connected.")
-        return self.mongodb_db[name]
+        return self.mongodb_client[name]
+
+    def get_mongodb_collection(self, name: str):
+        return self.get_database()[name]
+
+    def get_collection(self, database: str, collection: str):
+        return self.get_database(database)[collection]
 
     def is_connected(self) -> bool:
         return self._connected

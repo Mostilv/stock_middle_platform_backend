@@ -32,7 +32,8 @@ async def push_indicator_records(
         return await service.ingest(payload)
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"指标数据格式错误: {exc}。schema 示例见 /api/v1/stocks/targets。",
         ) from exc
     except Exception as exc:  # pragma: no cover - defensive
         raise HTTPException(
@@ -67,6 +68,7 @@ async def query_indicator_records(
     tags: Optional[List[str]] = Query(
         None, description="按标签筛选，支持多次传参，如 ?tags=long&tags=demo"
     ),
+    target: str = Query("primary", description="查询的数据目标别名，默认为 primary"),
     _: User = Depends(require_permissions(["indicators:read"])),
     service: IndicatorService = Depends(get_indicator_service),
 ) -> IndicatorQueryResponse:
@@ -81,6 +83,7 @@ async def query_indicator_records(
             limit=limit,
             skip=skip,
             tags=tags,
+            target=target,
         )
     except ValueError as exc:
         raise HTTPException(

@@ -94,6 +94,10 @@ Legacy assets formerly kept inside `stock-system/` have been removed to avoid ne
 - Qlib data ingest: `POST /api/v1/data/qlib/bars`（需 Bearer Token）
 - Indicator ingest: `POST /api/v1/indicators/records`（需 `indicators:write` 权限）
 - Indicator query: `GET /api/v1/indicators/records`（需 `indicators:read` 权限）
+- Stock basics ingest: `POST /api/v1/stocks/basic`（需 `stocks:write`）
+- Stock kline ingest: `POST /api/v1/stocks/kline`（需 `stocks:write`）
+- Data sink schema: `GET /api/v1/stocks/targets`（需 `stocks:read`）
+- Industry analytics: `GET /api/v1/analytics/industry/metrics`（需 `indicators:read`）
 
 ## Qlib 数据接入接口
 The `/api/v1/data/qlib/bars` endpoint accepts the same column names used by [Microsoft Qlib](https://github.com/microsoft/qlib) for stock data. Payloads must include a Bearer token (JWT) issued by this service.
@@ -183,3 +187,13 @@ curl -G http://localhost:8000/api/v1/indicators/records \
 - Username: `admin`
 - Password: `admin123`
 - Permissions: granted through the `admin` role; adjust after first login if needed.
+
+## Stock Data Push Workflow
+- Use `GET /api/v1/stocks/targets` (requires `stocks:read`) to discover available logical databases/collections and the JSON schema for each dataset (`stock_basic`, `stock_kline`, `indicator`). Administrators can override the mapping via the `DATA_TARGETS` environment variable.
+- Push stock basics with `POST /api/v1/stocks/basic` and K lines with `POST /api/v1/stocks/kline` (both require `stocks:write`). Payloads包含 `target`、`provider` 和 `items`，当格式错误时会返回 400 并提示参考 `/stocks/targets` 的 schema。
+- 行业指标可继续通过 `POST /api/v1/indicators/records` 推送，并在 `target` 字段中选择存储目标。
+
+## Industry Analytics Endpoint
+Using the ingested indicator results, `/api/v1/analytics/industry/metrics` (requires `indicators:read`) aggregates momentum and width metrics per Shenwan level-1 industry：
+- Query parameters：`days`（默认 12）、`target`、`end`（ISO8601，可用于配合前端的日期选择器）。
+- Response contains `dates` and `series` arrays so frontends can render line charts or heatmaps without additional joins.

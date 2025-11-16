@@ -3,11 +3,14 @@ from typing import List
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.core.data_sinks import data_sink_registry
 from app.core.security import verify_token
 from app.models.user import User
 from app.services.indicator_service import IndicatorService
+from app.services.industry_analytics_service import IndustryAnalyticsService
 from app.services.qlib_data_service import QlibDataIngestionService
 from app.services.role_service import RoleService
+from app.services.stock_data_service import StockDataService
 from app.services.strategy_service import StrategyService
 from app.services.user_service import UserService
 
@@ -23,7 +26,7 @@ def get_role_service() -> RoleService:
 
 
 def get_indicator_service() -> IndicatorService:
-    return IndicatorService()
+    return IndicatorService(registry=data_sink_registry)
 
 
 def get_strategy_service() -> StrategyService:
@@ -32,6 +35,14 @@ def get_strategy_service() -> StrategyService:
 
 def get_qlib_data_service() -> QlibDataIngestionService:
     return QlibDataIngestionService()
+
+
+def get_stock_data_service() -> StockDataService:
+    return StockDataService(registry=data_sink_registry)
+
+
+def get_industry_analytics_service() -> IndustryAnalyticsService:
+    return IndustryAnalyticsService(registry=data_sink_registry)
 
 
 async def get_current_user(

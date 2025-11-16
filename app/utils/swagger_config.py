@@ -18,7 +18,9 @@ API_TAGS: List[Dict[str, str]] = [
     {"name": "认证", "description": "登录与令牌管理"},
     {"name": "用户管理", "description": "用户、角色与权限接口"},
     {"name": "策略管理", "description": "量化策略维护与订阅"},
-    {"name": "技术指标", "description": "常用指标查询"},
+    {"name": "指标数据", "description": "技术指标查询与推送"},
+    {"name": "数据接入", "description": "股票基础/K线/行情推送接口"},
+    {"name": "行业分析", "description": "行业动量与行业宽度等衍生指标"},
     {"name": "系统监控", "description": "服务状态与健康检查"},
 ]
 
@@ -27,7 +29,7 @@ SECURITY_SCHEMES: Dict[str, Any] = {
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "在 Authorization 请求头中携带 Bearer {token}。",
+        "description": "在 Authorization 请求头中携带 Bearer {token}",
     }
 }
 
