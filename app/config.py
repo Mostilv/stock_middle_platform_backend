@@ -23,9 +23,6 @@ class Settings:
     log_level: str = config("LOG_LEVEL", default="INFO")
     bcrypt_rounds: int = config("BCRYPT_ROUNDS", default=12, cast=int)
 
-    baostock_user: str = config("BAOSTOCK_USER", default="anonymous")
-    baostock_password: str = config("BAOSTOCK_PASSWORD", default="123456")
-
     def __init__(self):
         data_targets_raw = config("DATA_TARGETS", default="")
         if data_targets_raw:
