@@ -19,6 +19,10 @@ class UserService:
 
         now = datetime.utcnow()
         user_data = user_create.dict(exclude={"password"})
+        user_data.setdefault("display_name", user_create.username)
+        user_data.setdefault("avatar_url", self._default_avatar(user_create.username))
+        user_data.setdefault("remark", "")
+        user_data.setdefault("isReal", True)
         user_doc = UserInDB(
             **user_data,
             hashed_password=get_password_hash(user_create.password),
@@ -60,6 +64,21 @@ class UserService:
         update_data = user_update.dict(exclude_unset=True)
         if not update_data:
             return await self.get_user_by_id(user_id)
+
+        if "username" in update_data:
+            existing = await self.repository.find_by_username(update_data["username"])
+            if existing and str(existing.get("_id")) != user_id:
+                raise ValueError("用户名已存在")
+
+        if "email" in update_data:
+            existing_email = await self.repository.find_by_email(update_data["email"])
+            if existing_email and str(existing_email.get("_id")) != user_id:
+                raise ValueError("邮箱已存在")
+
+        if "password" in update_data:
+            update_data["hashed_password"] = get_password_hash(
+                update_data.pop("password")
+            )
 
         update_data["updated_at"] = datetime.utcnow()
         if not await self.repository.update_user(user_id, update_data):
@@ -121,11 +140,47 @@ class UserService:
         )
         return await self.get_user_by_id(user.id)
 
+    async def ensure_default_admin(self) -> User:
+        """Ensure a demo admin user exists for the front-end integration."""
+        default_password = "123456"
+        existing = await self.repository.find_by_username("admin")
+        now = datetime.utcnow()
+
+        if existing:
+            await self.repository.update_user(
+                str(existing["_id"]),
+                {
+                    "email": existing.get("email") or "admin@example.com",
+                    "display_name": existing.get("display_name") or "系统管理员",
+                    "avatar_url": existing.get("avatar_url")
+                    or self._default_avatar("admin"),
+                    "remark": existing.get("remark") or "系统默认管理员",
+                    "is_superuser": True,
+                    "roles": list(set(existing.get("roles") or []) | {"admin"}),
+                    "hashed_password": get_password_hash(default_password),
+                    "updated_at": now,
+                },
+            )
+            refreshed = await self.get_user_by_username("admin")
+            if refreshed:
+                return refreshed
+
+        return await self.create_superuser(
+            username="admin",
+            email="admin@example.com",
+            password=default_password,
+            full_name="系统管理员",
+        )
+
     @staticmethod
     def _document_to_user(document: dict) -> User:
         document = {**document, "id": str(document["_id"])}
         document.setdefault("roles", [])
         document.setdefault("permissions", [])
+        document.setdefault("display_name", document.get("username"))
+        document.setdefault("avatar_url", UserService._default_avatar(document["username"]))
+        document.setdefault("remark", "")
+        document.setdefault("isReal", True)
         return User(**document)
 
     @staticmethod
@@ -134,3 +189,7 @@ class UserService:
         if "_id" in normalized and not isinstance(normalized["_id"], str):
             normalized["_id"] = str(normalized["_id"])
         return normalized
+
+    @staticmethod
+    def _default_avatar(username: str) -> str:
+        return f"https://api.dicebear.com/7.x/initials/svg?seed={username}"

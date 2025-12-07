@@ -5,14 +5,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.controllers import (
+    account,
     analytics,
     auth,
     data_feed,
     indicators,
+    limitup,
+    market,
+    portfolio,
     roles,
     stocks,
+    strategy_subscriptions,
     strategies,
     users,
+    settings as settings_controller,
 )
 from app.config import settings
 from app.db import db_connection_manager, lifespan
@@ -48,11 +54,25 @@ app.add_middleware(
 app.include_router(auth.router, prefix=settings.api_v1_str, tags=["认证"])
 app.include_router(users.router, prefix=settings.api_v1_str, tags=["用户管理"])
 app.include_router(roles.router, prefix=settings.api_v1_str, tags=["用户管理"])
+app.include_router(
+    strategy_subscriptions.router,
+    prefix=settings.api_v1_str,
+    tags=["策略订阅"],
+)
 app.include_router(strategies.router, prefix=settings.api_v1_str, tags=["策略管理"])
 app.include_router(indicators.router, prefix=settings.api_v1_str, tags=["指标数据"])
 app.include_router(data_feed.router, prefix=settings.api_v1_str, tags=["数据接入"])
 app.include_router(stocks.router, prefix=settings.api_v1_str, tags=["数据接入"])
 app.include_router(analytics.router, prefix=settings.api_v1_str, tags=["行业分析"])
+app.include_router(account.router, prefix=settings.api_v1_str, tags=["账户与系统设置"])
+app.include_router(
+    settings_controller.router,
+    prefix=settings.api_v1_str,
+    tags=["账户与系统设置"],
+)
+app.include_router(market.router, prefix=settings.api_v1_str, tags=["行情与行业指标"])
+app.include_router(limitup.router, prefix=settings.api_v1_str, tags=["涨停监控"])
+app.include_router(portfolio.router, prefix=settings.api_v1_str, tags=["投资组合"])
 
 
 def _custom_openapi():

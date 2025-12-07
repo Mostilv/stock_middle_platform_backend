@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.core.deps import (
     get_industry_analytics_service,
-    require_permissions,
+    get_optional_active_user,
 )
 from app.models.analytics import IndustryMetricResponse
 from app.models.user import User
@@ -30,7 +30,7 @@ async def fetch_industry_metrics(
     end: Optional[datetime] = Query(
         None, description="可选的结束时间（UTC），默认当前时间"
     ),
-    _: User = Depends(require_permissions(["indicators:read"])),
+    _: User = Depends(get_optional_active_user),
     service: IndustryAnalyticsService = Depends(get_industry_analytics_service),
 ) -> IndustryMetricResponse:
     try:

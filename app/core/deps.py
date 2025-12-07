@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -10,11 +10,20 @@ from app.services.indicator_service import IndicatorService
 from app.services.industry_analytics_service import IndustryAnalyticsService
 from app.services.qlib_data_service import QlibDataIngestionService
 from app.services.role_service import RoleService
+from app.services.frontend_state_service import (
+    AccountService,
+    LimitUpService,
+    MarketDataService,
+    PortfolioService,
+    SettingsService,
+    StrategySubscriptionService,
+)
 from app.services.stock_data_service import StockDataService
 from app.services.strategy_service import StrategyService
 from app.services.user_service import UserService
 
 security = HTTPBearer(scheme_name="BearerAuth")
+optional_security = HTTPBearer(scheme_name="OptionalBearerAuth", auto_error=False)
 
 
 def get_user_service() -> UserService:
@@ -45,6 +54,30 @@ def get_industry_analytics_service() -> IndustryAnalyticsService:
     return IndustryAnalyticsService(registry=data_sink_registry)
 
 
+def get_settings_service() -> SettingsService:
+    return SettingsService()
+
+
+def get_market_data_service() -> MarketDataService:
+    return MarketDataService()
+
+
+def get_limitup_service() -> LimitUpService:
+    return LimitUpService()
+
+
+def get_portfolio_service() -> PortfolioService:
+    return PortfolioService()
+
+
+def get_subscription_service() -> StrategySubscriptionService:
+    return StrategySubscriptionService()
+
+
+def get_account_service() -> AccountService:
+    return AccountService()
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     user_service: UserService = Depends(get_user_service),
@@ -66,6 +99,38 @@ async def get_current_user(
         raise credentials_exception
 
     return user
+
+
+async def get_optional_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security),
+    user_service: UserService = Depends(get_user_service),
+) -> User:
+    """
+    Return the authenticated user when a bearer token is supplied; otherwise fall back
+    to a demo admin user so the front-end can operate without Authorization headers.
+    """
+    if credentials and credentials.credentials:
+        username = verify_token(credentials.credentials)
+        if username is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="无法验证凭据",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        user = await user_service.get_user_by_username(username)
+        if user:
+            return user
+    return await user_service.ensure_default_admin()
+
+
+async def get_optional_active_user(
+    current_user: User = Depends(get_optional_user),
+) -> User:
+    if not current_user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="用户已被禁用"
+        )
+    return current_user
 
 
 async def get_current_active_user(

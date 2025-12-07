@@ -8,6 +8,10 @@ class UserBase(BaseModel):
     username: str
     email: str
     full_name: Optional[str] = None
+    display_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    remark: Optional[str] = None
+    isReal: bool = True
     roles: List[str] = Field(default_factory=list)
     permissions: List[str] = Field(default_factory=list)
     is_active: bool = True
@@ -19,8 +23,14 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(BaseModel):
+    username: Optional[str] = None
     email: Optional[str] = None
     full_name: Optional[str] = None
+    display_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    password: Optional[str] = None
+    remark: Optional[str] = None
+    isReal: Optional[bool] = None
     is_active: Optional[bool] = None
     is_superuser: Optional[bool] = None
     roles: Optional[List[str]] = None
