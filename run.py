@@ -6,6 +6,10 @@
 
 import os
 import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
 import subprocess
 import argparse
 from pathlib import Path
@@ -13,11 +17,11 @@ from pathlib import Path
 
 def run_dev_server():
     """启动开发环境服务器"""
-    print("🚀 启动开发环境服务器...")
-    print("📁 监控目录: app/, scripts/")
-    print("🔄 热重载: 已启用")
-    print("🌐 访问地址: http://localhost:8000")
-    print("📚 API文档: http://localhost:8000/docs")
+    print("启动开发环境服务器...")
+    print("监控目录: app/, scripts/")
+    print("热重载: 已启用")
+    print("访问地址: http://localhost:8000")
+    print("API文档: http://localhost:8000/docs")
     print()
 
     cmd = [
@@ -132,17 +136,17 @@ def check_dependencies():
     try:
         import uvicorn
 
-        print("✅ Uvicorn 已安装")
+        print("Uvicorn 已安装")
     except ImportError:
-        print("❌ Uvicorn 未安装，请运行: pip install uvicorn[standard]")
+        print("Uvicorn 未安装，请运行: pip install uvicorn[standard]")
         sys.exit(1)
 
     try:
         import fastapi
 
-        print("✅ FastAPI 已安装")
+        print("FastAPI 已安装")
     except ImportError:
-        print("❌ FastAPI 未安装，请运行: pip install fastapi")
+        print("FastAPI 未安装，请运行: pip install fastapi")
         sys.exit(1)
 
 
@@ -171,7 +175,7 @@ def main():
     args = parser.parse_args()
 
     # 显示欢迎信息
-    print("🎯 股票中间平台后端")
+    print("股票中间平台后端")
     print("=" * 50)
 
     # 检查依赖

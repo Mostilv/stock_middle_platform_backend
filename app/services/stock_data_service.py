@@ -14,6 +14,7 @@ from app.models.stock_data import (
 )
 from app.repositories.stock_basic_repository import StockBasicRepository
 from app.repositories.stock_kline_repository import StockKlineRepository
+from app.models.integrity import IntegrityCheckRequest, IntegrityCheckResult
 
 
 class StockDataService:
@@ -75,6 +76,73 @@ class StockDataService:
             modified=stats.get("modified", 0),
             upserted=stats.get("upserted", 0),
         )
+
+
+    async def check_integrity(self, payload: IntegrityCheckRequest) -> List[IntegrityCheckResult]:
+        repository = self._get_kline_repository(payload.target)
+        results = []
+        
+        for item in payload.items:
+            filter_query = {
+                "symbol": item.symbol,
+                "frequency": item.frequency,
+            }
+            date_filter = {}
+            if item.start_date:
+                date_filter["$gte"] = datetime(
+                    item.start_date.year, item.start_date.month, item.start_date.day
+                )
+            if item.end_date:
+                end_dt = datetime(
+                    item.end_date.year, item.end_date.month, item.end_date.day, 23, 59, 59
+                )
+                date_filter["$lte"] = end_dt
+            
+            if date_filter:
+                filter_query["timestamp"] = date_filter
+            
+            pipeline = [
+                {"$match": filter_query},
+                {
+                    "$group": {
+                        "_id": None,
+                        "count": {"$sum": 1},
+                        "min_ts": {"$min": "$timestamp"},
+                        "max_ts": {"$max": "$timestamp"},
+                    }
+                }
+            ]
+            
+            try:
+                # Direct collection access via repository
+                cursor = repository.collection.aggregate(pipeline)
+                agg_res = await cursor.to_list(length=1)
+                
+                if agg_res:
+                    data = agg_res[0]
+                    res = IntegrityCheckResult(
+                        symbol=item.symbol,
+                        frequency=item.frequency,
+                        count=data["count"],
+                        min_date=data["min_ts"].date() if data.get("min_ts") else None,
+                        max_date=data["max_ts"].date() if data.get("max_ts") else None,
+                    )
+                else:
+                    res = IntegrityCheckResult(
+                        symbol=item.symbol,
+                        frequency=item.frequency,
+                        count=0,
+                    )
+                results.append(res)
+            except Exception as e:
+                results.append(IntegrityCheckResult(
+                    symbol=item.symbol,
+                    frequency=item.frequency,
+                    count=0,
+                    status=f"error: {str(e)}"
+                ))
+        
+        return results
 
     def _get_basic_repository(self, target: str) -> StockBasicRepository:
         key = target or "primary"

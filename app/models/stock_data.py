@@ -109,10 +109,10 @@ class StockBasicBatch(BaseModel):
 
 class StockKlineRecord(BaseModel):
     symbol: str = Field(..., description="标准化股票代码，例如 SH600519")
-    frequency: Literal["d", "w", "m", "15", "30", "60"] = Field(
+    frequency: Literal["d", "w", "m", "5", "15", "30", "60"] = Field(
         ..., description="K 线周期标识"
     )
-    timestamp: datetime = Field(..., description="K 线时间戳（UTC）")
+    timestamp: datetime = Field(..., description="K 线时间戳（UTC/本地）")
     open: float = Field(..., description="开盘价")
     high: float = Field(..., description="最高价")
     low: float = Field(..., description="最低价")
@@ -144,7 +144,14 @@ class StockKlineRecord(BaseModel):
                 normalized = value.replace("Z", "+00:00")
                 parsed = datetime.fromisoformat(normalized)
             except ValueError:
-                raise ValueError("timestamp 必须为 ISO8601 格式")
+                # Try fallback format from sync script (e.g. "2023-10-18 10:30:00" or "2023-10-18")
+                try:
+                    if len(value) == 10:
+                        parsed = datetime.strptime(value, "%Y-%m-%d")
+                    else:
+                        parsed = datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    raise ValueError("timestamp 必须为 ISO8601 或 YYYY-MM-DD HH:MM:SS 格式")
             if parsed.tzinfo:
                 return parsed.astimezone(timezone.utc).replace(tzinfo=None)
             return parsed
@@ -168,6 +175,37 @@ class StockKlineRecord(BaseModel):
         if text in {"0", "false", "halted", "suspend"}:
             return "halted"
         raise ValueError("trade_status 仅支持 trading/halted")
+
+    @validator("volume", "amount")
+    def validate_non_negative(cls, value: Optional[float]) -> Optional[float]:
+        if value is not None and value < 0:
+            raise ValueError("成交量/成交额不能为负数")
+        return value
+
+    @validator("high")
+    def validate_prices(cls, high: float, values: Dict[str, Any]) -> float:
+        # Pydantic 1.x root validator alternative or field validator that accesses values
+        # NOTE: standard validator accesses already-validated fields in 'values'
+        _open = values.get("open")
+        _low = values.get("low")
+        _close = values.get("close")
+        
+        # We need all prices to check consistency
+        if _open is None or _low is None or _close is None:
+            return high
+
+        if high < _low:
+            raise ValueError(f"最高价 {high} 不能低于最低价 {_low}")
+        if high < _open:
+            raise ValueError(f"最高价 {high} 不能低于开盘价 {_open}")
+        if high < _close:
+            raise ValueError(f"最高价 {high} 不能低于收盘价 {_close}")
+        if _low > _open:
+             raise ValueError(f"最低价 {_low} 不能高于开盘价 {_open}")
+        if _low > _close:
+             raise ValueError(f"最低价 {_low} 不能高于收盘价 {_close}")
+        
+        return high
 
 
 class StockKlineBatch(BaseModel):

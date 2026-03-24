@@ -171,6 +171,9 @@ def require_permissions(required_permissions: List[str]):
         current_user: User = Depends(get_current_active_user),
         role_service: RoleService = Depends(get_role_service),
     ) -> User:
+        if current_user.is_superuser:
+            return current_user
+
         # 合并用户直接权限与角色权限
         effective_permissions = set(current_user.permissions or [])
         for role_name in current_user.roles or []:

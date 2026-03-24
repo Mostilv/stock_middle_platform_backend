@@ -19,6 +19,7 @@ from app.controllers import (
     strategies,
     users,
     settings as settings_controller,
+    integrity,
 )
 from app.config import settings
 from app.db import db_connection_manager, lifespan
@@ -63,6 +64,7 @@ app.include_router(strategies.router, prefix=settings.api_v1_str, tags=["策略�
 app.include_router(indicators.router, prefix=settings.api_v1_str, tags=["指标数据"])
 app.include_router(data_feed.router, prefix=settings.api_v1_str, tags=["数据接入"])
 app.include_router(stocks.router, prefix=settings.api_v1_str, tags=["数据接入"])
+app.include_router(integrity.router, prefix=settings.api_v1_str, tags=["数据完整性"])
 app.include_router(analytics.router, prefix=settings.api_v1_str, tags=["行业分析"])
 app.include_router(account.router, prefix=settings.api_v1_str, tags=["账户与系统设置"])
 app.include_router(

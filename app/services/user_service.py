@@ -157,7 +157,6 @@ class UserService:
                     "remark": existing.get("remark") or "系统默认管理员",
                     "is_superuser": True,
                     "roles": list(set(existing.get("roles") or []) | {"admin"}),
-                    "hashed_password": get_password_hash(default_password),
                     "updated_at": now,
                 },
             )
