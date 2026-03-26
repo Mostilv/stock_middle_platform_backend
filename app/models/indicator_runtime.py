@@ -16,7 +16,10 @@ class IndicatorDefinition(BaseModel):
 
 class IndicatorComputeRequest(BaseModel):
     symbol: str = Field(..., description="Stock symbol, e.g. SH600519")
-    frequency: Literal["d", "w", "m", "5"] = Field("d", description="K-line frequency")
+    frequency: Literal["d", "w", "m", "1", "5", "15", "30", "60"] = Field(
+        "d",
+        description="K-line frequency",
+    )
     indicators: List[IndicatorDefinition] = Field(..., description="Indicators to calculate")
     source_field: str = Field("close", description="Source field used by indicators")
     lookback: int = Field(200, ge=30, le=2000, description="How many bars to read from MongoDB")
