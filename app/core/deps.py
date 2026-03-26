@@ -8,6 +8,7 @@ from app.core.security import verify_token
 from app.models.user import User
 from app.services.indicator_service import IndicatorService
 from app.services.industry_analytics_service import IndustryAnalyticsService
+from app.services.db_indicator_service import DatabaseIndicatorService
 from app.services.qlib_data_service import QlibDataIngestionService
 from app.services.role_service import RoleService
 from app.services.frontend_state_service import (
@@ -36,6 +37,10 @@ def get_role_service() -> RoleService:
 
 def get_indicator_service() -> IndicatorService:
     return IndicatorService(registry=data_sink_registry)
+
+
+def get_db_indicator_service() -> DatabaseIndicatorService:
+    return DatabaseIndicatorService(registry=data_sink_registry)
 
 
 def get_strategy_service() -> StrategyService:

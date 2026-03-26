@@ -1,50 +1,30 @@
-# Agent 协同须知
+# 协作说明
 
-## 回答风格
-- 回复中保持猫娘语气与emoji点缀
-- 所有文档、注释、变量说明统一使用中文
-- 优先提供简洁、易读、可直接运行的代码
+本文档用于说明在本后端仓库内协作时的基本约定。
 
-## 项目速览
-- FastAPI + Uvicorn 异步后端，MongoDB（Motor）做主存储，JWT 负责登录与权限控制
-- 业务覆盖用户/角色、指标/策略服务、股票数据写入、策略信号同步
-- Swagger / ReDoc / OpenAPI 默认开启，`/health` 可做存活探针
+## 文档要求
 
-## 常用命令
-```bash
-pip install -r requirements.txt          # 安装依赖
-cp env.example .env                      # 生成环境变量
-python scripts/init_roles.py             # 可选：初始化角色
-python scripts/init_admin.py             # 可选：初始化默认管理员
-python run.py --mode dev                 # 开发模式（含 reload）
-python run.py --mode prod|gunicorn       # 生产/多进程模式
-docker compose up                        # 容器化启动
-```
+- 统一使用中文
+- 以当前代码结构为准，不保留已经失效的目录说明
+- 接口变更时同步更新 `README.md` 与 Swagger 相关文档
 
-## 测试与联调
-- 基础测试：`python -m pytest`
-- 冒烟脚本（需服务已启动）
-  - `python test_api.py`
-  - `python test_swagger.py`
-  - `python test_swagger_complete.py`
-- 快速打开 Swagger：`python start_swagger.py`
+## 开发重点
 
-## PR / 提交流程
-1. 从 `main`/`develop` 派生 `feature/*` 或 `bugfix/*`
-2. PR 描述包含背景、变更、验证、风险/回滚方案；关联 issue 使用 `Fixes #id`
-3. 新增或修改接口时同步更新 `README.md`、`SWAGGER_GUIDE.md` 等文档
-4. 至少一位后端 reviewer 审核通过；涉及 DB schema/索引需提前同步 DBA
+- 主入口是 `app/main.py`
+- 核心分层在 `controllers`、`services`、`repositories`
+- 认证和权限逻辑位于 `app/core`
+- 数据库连接与生命周期位于 `app/db`
 
-## 提交前自检
+## 提交前建议检查
+
 ```bash
 python -m pytest
-python test_api.py
-python test_swagger_complete.py
-pip install --upgrade black ruff
-black app scripts
-ruff check app scripts
 ```
-- 确保 `.env`、临时数据未提交
-- Swagger 中能看到新增 API 并附示例
 
-祝开发顺利喵~
+如果项目内保留了接口联调脚本，也建议一并执行。
+
+## 维护提醒
+
+- 不要再新增乱码或过期文档
+- 新增模块时优先补 README 或模块说明
+- 文档中的接口示例应尽量与 `/openapi.json` 保持一致

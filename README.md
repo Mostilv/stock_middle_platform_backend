@@ -1,192 +1,115 @@
 # 股票中台后端
 
-## 概述
-- 基于 FastAPI 构建的股票中台后端，负责用户/角色管理、指标接入、策略服务与数据推送。
-- MongoDB 搭配 Motor 异步驱动提供主要数据存储，读写均支持协程化处理。
-- 默认启用 JWT 认证与角色/权限校验，并自动生成 Swagger 文档方便联调。
+`stock_middle_platform_backend` 是股票中台的 FastAPI 后端，负责认证授权、用户管理、股票数据接入、指标查询，以及前端页面需要的账户、设置、涨停复盘、组合和策略订阅等接口。
 
 ## 技术栈
-- FastAPI + Uvicorn
-- MongoDB（Motor 异步驱动）
-- 可选：Redis / Celery 处理后台任务
-- Python-JOSE + Passlib 负责 JWT/密码哈希
 
-## 分层架构
-后端采用三层结构：
-- `app/controllers`：路由与请求响应处理（FastAPI Router）。
-- `app/services`：业务逻辑、事务编排。
-- `app/repositories`：与 MongoDB 交互的数据访问层。
+- FastAPI
+- Uvicorn
+- MongoDB + Motor
+- Pydantic
+- Python-JOSE
+- Passlib
 
-公共配置、领域模型与工具函数分别位于 `app/config`、`app/models`、`app/utils`。
+## 当前目录结构
 
-## 项目结构
-```
-|-- app
-|   |-- controllers
-|   |   |-- auth.py
-|   |   |-- data_feed.py
-|   |   |-- indicators.py
-|   |   |-- roles.py
-|   |   |-- strategies.py
-|   |   |-- users.py
-|   |   +-- __init__.py
-|   |-- services
-|   |   |-- indicator_service.py
-|   |   |-- qlib_data_service.py
-|   |   |-- role_service.py
-|   |   |-- strategy_service.py
-|   |   |-- user_service.py
-|   |   +-- __init__.py
-|   |-- repositories
-|   |   |-- base.py
-|   |   |-- indicator_repository.py
-|   |   |-- qlib_data_repository.py
-|   |   |-- role_repository.py
-|   |   |-- strategy_repository.py
-|   |   |-- user_repository.py
-|   |   +-- __init__.py
-|   |-- config.py
-|   |-- core
-|   |-- db
-|   |-- example
-|   |-- main.py
-|   |-- models
-|   |   |-- indicator.py
-|   +-- utils
-|-- scripts
-|-- env.example
-|-- requirements.txt
-|-- docker-compose.yml / Dockerfile
-|-- run.py / start.{bat,sh}
-|-- SWAGGER_GUIDE.md / SWAGGER_INTEGRATION_SUMMARY.md
-|-- test_api.py / test_swagger*.py
-|-- uvicorn_config.py
+```text
+.
+|-- app/
+|   |-- controllers/      路由层
+|   |-- core/             安全、依赖注入、数据落库注册
+|   |-- db/               数据库连接与 lifespan
+|   |-- example/          示例文档与脚本
+|   |-- models/           Pydantic 模型
+|   |-- repositories/     数据访问层
+|   |-- services/         业务服务层
+|   |-- utils/            Swagger 与工具函数
+|   `-- main.py           FastAPI 入口
+|-- scripts/
+|-- Dockerfile
+|-- docker-compose.yml
+|-- README.md
+|-- SWAGGER_GUIDE.md
+`-- requirements.txt
 ```
 
-历史上的 `stock-system/` 子目录已移除，避免嵌套项目混乱。
+## 主要接口分组
 
-## 快速上手
-1. 安装依赖
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. 配置环境变量
-   ```bash
-   cp env.example .env
-   # 按需调整 MongoDB / JWT / 数据源配置
-   ```
-3. （可选）写入初始数据
-   ```bash
-   python scripts/init_roles.py
-   python scripts/init_admin.py  # 默认 admin/admin123
-   ```
-4. 启动服务
-   ```bash
-   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-   ```
-   也可运行 `run.py`、`start.sh` 或 `start.bat`。
+### 认证与权限
 
-## 常用接口
-- Swagger UI：`/docs`
-- ReDoc：`/redoc`
-- OpenAPI：`/openapi.json`
-- 健康检查：`/health`
-- Qlib 数据写入：`POST /api/v1/data/qlib/bars`（需 Bearer Token）
-- 指标写入：`POST /api/v1/indicators/records`（需 `indicators:write`）
-- 指标查询：`GET /api/v1/indicators/records`（需 `indicators:read`）
-- 股票基础数据：`POST /api/v1/stocks/basic`（需 `stocks:write`）
-- 股票 K 线：`POST /api/v1/stocks/kline`（需 `stocks:write`）
-- 数据目标 Schema：`GET /api/v1/stocks/targets`（需 `stocks:read`）
-- 行业指标聚合：`GET /api/v1/analytics/industry/metrics`（需 `indicators:read`）
+- `POST /api/v1/auth/login`
+- `GET /api/v1/auth/me`
+- `POST /api/v1/auth/register`
 
-## Qlib 数据接入
-`/api/v1/data/qlib/bars` 兼容 [Microsoft Qlib](https://github.com/microsoft/qlib) 的字段命名，载荷需包含 Bearer Token。
+### 用户与角色
+
+- `GET /api/v1/users`
+- `POST /api/v1/users`
+- `GET /api/v1/users/{id}`
+- `PUT /api/v1/users/{id}`
+- `DELETE /api/v1/users/{id}`
+- `GET /api/v1/roles`
+
+### 股票与指标数据
+
+- `GET /api/v1/stocks/targets`
+- `POST /api/v1/stocks/basic`
+- `POST /api/v1/stocks/kline`
+- `POST /api/v1/indicators/records`
+- `GET /api/v1/indicators/records`
+- `GET /api/v1/analytics/industry/metrics`
+- `POST /api/v1/data/qlib/bars`
+- `POST /api/v1/data/market/indices`
+- `POST /api/v1/data/limit_up/pool`
+- `POST /api/v1/integrity/check`
+
+### 前端页面相关接口
+
+- `GET /api/v1/account/profile`
+- `PUT /api/v1/account/profile`
+- `POST /api/v1/account/password`
+- `GET /api/v1/settings/data`
+- `POST /api/v1/settings/data`
+- `GET /api/v1/market/data`
+- `GET /api/v1/limitup/overview`
+- `GET /api/v1/portfolio/overview`
+- `POST /api/v1/portfolio/strategies/{strategy_id}/toggle`
+- `GET /api/v1/strategies/subscriptions`
+- `POST /api/v1/strategies/subscriptions`
+- `POST /api/v1/strategies/subscriptions/blacklist`
+
+## 快速开始
+
+### 1. 安装依赖
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/data/qlib/bars \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-        "provider": "partner-feed",
-        "market": "cn",
-        "timezone": "Asia/Shanghai",
-        "records": [
-          {
-            "instrument": "SH600519",
-            "datetime": "2024-10-08T15:00:00+08:00",
-            "freq": "1d",
-            "open": 1600.5,
-            "high": 1611.2,
-            "low": 1590.0,
-            "close": 1605.4,
-            "volume": 123456,
-            "amount": 987654321,
-            "factor": 1.0,
-            "turnover": 0.35,
-            "limit_status": "none",
-            "suspended": false,
-            "extra_fields": {
-              "Ref(close,1)": 1588.1
-            }
-          }
-        ]
-      }'
+python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
 ```
 
-服务会把股票代码转换为大写、统一时间为 UTC，并在 `(instrument, freq, datetime)` 复合键上 upsert，重复推送保持幂等。
+### 2. 准备环境变量
 
-## 指标数据推送与查询
-指标计算由外部组件承担，本服务负责接收、存储与查询：
-- 写入：`POST /api/v1/indicators/records`
-  - 需 `indicators:write`
-  - 支持批量 upsert，同一 `(indicator, symbol, timeframe, timestamp)` 自动覆盖
-  - `value`、`values`、`payload` 至少提供一个
-- 查询：`GET /api/v1/indicators/records`
-  - 需 `indicators:read`
-  - 支持按指标、标的、时间区间、标签过滤
-  - 返回 `data + total` 结构方便前端分页
+如果仓库内提供了 `env.example`，复制为 `.env` 并补齐 MongoDB、JWT 等配置；如果没有，请直接按 `app/config.py` 中读取的字段自行创建。
+
+### 3. 启动服务
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/indicators/records \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-        "provider": "quant-service",
-        "records": [
-          {
-            "symbol": "SH600519",
-            "indicator": "rsi14",
-            "timeframe": "1d",
-            "timestamp": "2024-10-08T15:00:00+08:00",
-            "value": 56.17,
-            "values": {"overbought": 70, "oversold": 30},
-            "payload": {"window": 14},
-            "tags": ["daily", "demo"]
-          }
-        ]
-      }'
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-```bash
-curl -G http://localhost:8000/api/v1/indicators/records \
-  -H "Authorization: Bearer <token>" \
-  --data-urlencode "indicator=rsi14" \
-  --data-urlencode "symbol=SH600519" \
-  --data-urlencode "timeframe=1d" \
-  --data-urlencode "limit=50"
-```
+## 文档与调试
 
-## 默认账号
-- 用户名：`admin`
-- 密码：`admin123`
-- 权限：继承 `admin` 角色，首次登录后请立即修改密码。
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+- OpenAPI: `http://localhost:8000/openapi.json`
+- 健康检查: `http://localhost:8000/health`
 
-## 股票数据推送流程
-- 通过 `GET /api/v1/stocks/targets`（需 `stocks:read`）查看可用逻辑库/集合及 JSON Schema（`stock_basic`、`stock_kline`、`indicator` 等）。管理员可用 `DATA_TARGETS` 环境变量自定义映射。
-- `POST /api/v1/stocks/basic`、`POST /api/v1/stocks/kline`（需 `stocks:write`）用于推送基础信息与多频 K 线，请确保载荷含 `target`、`provider`、`items`；格式出错会返回 400 并附参考 Schema。
-- 行业指标继续通过 `POST /api/v1/indicators/records` 写入，可在 `target` 字段指定存储目标。
+更详细的说明见 `SWAGGER_GUIDE.md`。
 
-## 行业指标聚合接口
-`GET /api/v1/analytics/industry/metrics`（需 `indicators:read`）会基于入库指标数据聚合申万一级行业的动量、宽度：
-- 查询参数：`days`（默认 12）、`target`、`end`（ISO8601，可与前端日期控件配合）。
-- 响应提供 `dates` 与 `series` 数组，前端即可直接绘制折线图或热力图。
+## 当前实现说明
+
+- 后端目录名义上采用 `controllers -> services -> repositories` 分层
+- 部分前端页面接口目前集中在 `app/services/frontend_state_service.py`
+- `data_feed` 中的部分写库逻辑仍直接在控制器层完成
+
+以上结构能工作，但还处于持续整理阶段。后续如果进行架构重构，应优先按领域拆分服务并统一数据落库路径。
