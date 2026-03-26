@@ -4,9 +4,9 @@ from pydantic import BaseModel
 from app.core.deps import get_current_active_user, get_subscription_service
 from app.models.subscription import StrategySubscriptionState
 from app.models.user import User
-from app.services.frontend_state_service import StrategySubscriptionService
+from app.services.subscription_service import StrategySubscriptionService
 
-router = APIRouter(prefix="/strategies", tags=["策略订阅"])
+router = APIRouter(prefix="/strategies", tags=["strategies"])
 
 
 class SubscriptionUpdate(BaseModel):

@@ -7,9 +7,9 @@ from app.models.account import (
     PasswordChangeRequest,
 )
 from app.models.user import User
-from app.services.frontend_state_service import AccountService
+from app.services.account_service import AccountService
 
-router = APIRouter(prefix="/account", tags=["账户与系统设置"])
+router = APIRouter(prefix="/account", tags=["account"])
 
 
 @router.get("/profile", response_model=AccountProfile)

@@ -5,7 +5,7 @@ from app.models.role import Role, RoleCreate, RoleUpdate
 from app.services.role_service import RoleService
 
 
-router = APIRouter(prefix="/roles", tags=["角色管理"])
+router = APIRouter(prefix="/roles", tags=["users"])
 
 
 @router.post("/", response_model=Role)

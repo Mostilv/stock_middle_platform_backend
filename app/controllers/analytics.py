@@ -11,7 +11,7 @@ from app.models.analytics import IndustryMetricResponse
 from app.models.user import User
 from app.services.industry_analytics_service import IndustryAnalyticsService
 
-router = APIRouter(prefix="/analytics", tags=["行业分析"])
+router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
 @router.get(

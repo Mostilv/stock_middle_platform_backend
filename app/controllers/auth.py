@@ -12,9 +12,9 @@ from app.core.security import create_access_token
 from app.models.auth_payloads import LoginRequest, LoginResponse, LoginUser
 from app.services.user_service import UserService
 from app.models.user import User, UserCreate
-from app.services.frontend_state_service import SettingsService
+from app.services.settings_service import SettingsService
 
-router = APIRouter(prefix="/auth", tags=["认证"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=User)

@@ -5,7 +5,7 @@ from app.services.user_service import UserService
 from app.models.user import User, UserCreate, UserUpdate
 from pydantic import BaseModel
 
-router = APIRouter(prefix="/users", tags=["用户管理"])
+router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.post("", response_model=User)

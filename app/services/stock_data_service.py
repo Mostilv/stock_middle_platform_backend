@@ -186,7 +186,7 @@ class StockDataService:
             "symbol": record.symbol,
             "frequency": record.frequency,
             "timestamp": timestamp,
-            "trade_date": timestamp.date(),
+            "trade_date": datetime(timestamp.year, timestamp.month, timestamp.day),
             "open": record.open,
             "high": record.high,
             "low": record.low,

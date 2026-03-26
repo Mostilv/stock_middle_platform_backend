@@ -5,9 +5,9 @@ from fastapi import APIRouter, Depends, Query
 from app.core.deps import get_market_data_service, get_current_active_user
 from app.models.market import MarketDataResponse
 from app.models.user import User
-from app.services.frontend_state_service import MarketDataService
+from app.services.market_service import MarketDataService
 
-router = APIRouter(prefix="/market", tags=["行情与行业指标"])
+router = APIRouter(prefix="/market", tags=["market"])
 
 
 def _parse_symbols(raw: Optional[str]) -> Optional[List[str]]:

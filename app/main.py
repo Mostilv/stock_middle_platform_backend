@@ -4,30 +4,26 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.config import settings
 from app.controllers import (
     account,
     analytics,
     auth,
     data_feed,
     indicators,
+    integrity,
     limitup,
     market,
     portfolio,
     roles,
-    stocks,
-    strategy_subscriptions,
-    strategies,
-    users,
     settings as settings_controller,
-    integrity,
+    stocks,
+    strategies,
+    strategy_subscriptions,
+    users,
 )
-from app.config import settings
 from app.db import db_connection_manager, lifespan
-from app.utils.swagger_config import (
-    get_api_tags,
-    get_custom_openapi,
-    get_servers,
-)
+from app.utils.swagger_config import get_api_tags, get_custom_openapi, get_servers
 
 app = FastAPI(
     title=settings.project_name,
@@ -37,7 +33,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
-    contact={"name": "股票中间平台开发组", "email": "dev@stockplatform.com"},
+    contact={"name": "Stock Platform Backend", "email": "dev@stockplatform.com"},
     license_info={"name": "MIT", "url": "https://opensource.org/licenses/MIT"},
     servers=get_servers(),
     tags=get_api_tags(),
@@ -52,29 +48,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router, prefix=settings.api_v1_str, tags=["认证"])
-app.include_router(users.router, prefix=settings.api_v1_str, tags=["用户管理"])
-app.include_router(roles.router, prefix=settings.api_v1_str, tags=["用户管理"])
-app.include_router(
-    strategy_subscriptions.router,
-    prefix=settings.api_v1_str,
-    tags=["策略订阅"],
-)
-app.include_router(strategies.router, prefix=settings.api_v1_str, tags=["策略管理"])
-app.include_router(indicators.router, prefix=settings.api_v1_str, tags=["指标数据"])
-app.include_router(data_feed.router, prefix=settings.api_v1_str, tags=["数据接入"])
-app.include_router(stocks.router, prefix=settings.api_v1_str, tags=["数据接入"])
-app.include_router(integrity.router, prefix=settings.api_v1_str, tags=["数据完整性"])
-app.include_router(analytics.router, prefix=settings.api_v1_str, tags=["行业分析"])
-app.include_router(account.router, prefix=settings.api_v1_str, tags=["账户与系统设置"])
-app.include_router(
-    settings_controller.router,
-    prefix=settings.api_v1_str,
-    tags=["账户与系统设置"],
-)
-app.include_router(market.router, prefix=settings.api_v1_str, tags=["行情与行业指标"])
-app.include_router(limitup.router, prefix=settings.api_v1_str, tags=["涨停监控"])
-app.include_router(portfolio.router, prefix=settings.api_v1_str, tags=["投资组合"])
+app.include_router(auth.router, prefix=settings.api_v1_str)
+app.include_router(users.router, prefix=settings.api_v1_str)
+app.include_router(roles.router, prefix=settings.api_v1_str)
+app.include_router(strategy_subscriptions.router, prefix=settings.api_v1_str)
+app.include_router(strategies.router, prefix=settings.api_v1_str)
+app.include_router(indicators.router, prefix=settings.api_v1_str)
+app.include_router(data_feed.router, prefix=settings.api_v1_str)
+app.include_router(stocks.router, prefix=settings.api_v1_str)
+app.include_router(integrity.router, prefix=settings.api_v1_str)
+app.include_router(analytics.router, prefix=settings.api_v1_str)
+app.include_router(account.router, prefix=settings.api_v1_str)
+app.include_router(settings_controller.router, prefix=settings.api_v1_str)
+app.include_router(market.router, prefix=settings.api_v1_str)
+app.include_router(limitup.router, prefix=settings.api_v1_str)
+app.include_router(portfolio.router, prefix=settings.api_v1_str)
 
 
 def _custom_openapi():
@@ -84,7 +72,7 @@ def _custom_openapi():
 app.openapi = _custom_openapi
 
 
-@app.get("/", tags=["系统监控"])
+@app.get("/", tags=["system"])
 async def root():
     database_status = await db_connection_manager.health_check()
     return {
@@ -96,10 +84,12 @@ async def root():
         "timestamp": datetime.utcnow().isoformat(),
         "database": database_status,
         "connected": db_connection_manager.is_connected(),
+        "mongodb_db": settings.mongodb_db,
+        "use_mock_db": settings.use_mock_db,
     }
 
 
-@app.get("/health", tags=["系统监控"])
+@app.get("/health", tags=["system"])
 async def health_check():
     database_status = await db_connection_manager.health_check()
     is_healthy = all(database_status.values()) if database_status else False
@@ -110,9 +100,14 @@ async def health_check():
         "version": settings.version,
         "database": database_status,
         "connected": db_connection_manager.is_connected(),
+        "mongodb_db": settings.mongodb_db,
+        "use_mock_db": settings.use_mock_db,
     }
 
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    return JSONResponse(status_code=500, content={"detail": f"服务器内部错误: {exc}"})
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {exc}"},
+    )

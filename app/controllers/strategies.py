@@ -16,7 +16,7 @@ from app.models.strategy import (
 )
 from app.models.user import User
 
-router = APIRouter(prefix="/strategies", tags=["策略管理"])
+router = APIRouter(prefix="/strategies", tags=["strategies"])
 
 
 @router.post("/", response_model=Strategy)

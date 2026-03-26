@@ -40,12 +40,12 @@
 
 - 主入口为 `app/main.py`
 - 业务代码集中在 `app/controllers`、`app/services`、`app/repositories`
-- 页面型服务目前集中在 `app/services/frontend_state_service.py`
+- 页面型服务已拆分为按领域组织的独立 service 模块
 - 数据接入部分存在少量控制器直接落库逻辑
 
 ## 推荐维护方向
 
-1. 继续按领域拆分 `frontend_state_service.py`
+1. 继续清理剩余的 controller/model 中文乱码与历史说明
 2. 统一控制器层和服务层职责
 3. 把直接写库逻辑下沉到 service/repository
 4. 补齐自动化测试与契约测试

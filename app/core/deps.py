@@ -11,14 +11,13 @@ from app.services.industry_analytics_service import IndustryAnalyticsService
 from app.services.db_indicator_service import DatabaseIndicatorService
 from app.services.qlib_data_service import QlibDataIngestionService
 from app.services.role_service import RoleService
-from app.services.frontend_state_service import (
-    AccountService,
-    LimitUpService,
-    MarketDataService,
-    PortfolioService,
-    SettingsService,
-    StrategySubscriptionService,
-)
+from app.services.account_service import AccountService
+from app.services.limitup_service import LimitUpService
+from app.services.market_service import MarketDataService
+from app.services.portfolio_service import PortfolioService
+from app.services.settings_service import SettingsService
+from app.services.subscription_service import StrategySubscriptionService
+from app.services.raw_data_query_service import RawStockDataQueryService
 from app.services.stock_data_service import StockDataService
 from app.services.strategy_service import StrategyService
 from app.services.user_service import UserService
@@ -81,6 +80,10 @@ def get_subscription_service() -> StrategySubscriptionService:
 
 def get_account_service() -> AccountService:
     return AccountService()
+
+
+def get_raw_stock_data_query_service() -> RawStockDataQueryService:
+    return RawStockDataQueryService(registry=data_sink_registry)
 
 
 async def get_current_user(

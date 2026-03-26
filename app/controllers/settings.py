@@ -3,9 +3,9 @@ from fastapi import APIRouter, Depends
 from app.core.deps import get_current_active_user, get_settings_service
 from app.models.settings import SettingsData
 from app.models.user import User
-from app.services.frontend_state_service import SettingsService
+from app.services.settings_service import SettingsService
 
-router = APIRouter(prefix="/settings", tags=["账户与系统设置"])
+router = APIRouter(prefix="/settings", tags=["account"])
 
 
 @router.get("/data", response_model=SettingsData)

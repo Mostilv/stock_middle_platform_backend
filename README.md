@@ -109,7 +109,7 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ## 当前实现说明
 
 - 后端目录名义上采用 `controllers -> services -> repositories` 分层
-- 部分前端页面接口目前集中在 `app/services/frontend_state_service.py`
+- 页面型服务已按领域拆分到 `app/services/` 下的独立模块
 - `data_feed` 中的部分写库逻辑仍直接在控制器层完成
 
 以上结构能工作，但还处于持续整理阶段。后续如果进行架构重构，应优先按领域拆分服务并统一数据落库路径。

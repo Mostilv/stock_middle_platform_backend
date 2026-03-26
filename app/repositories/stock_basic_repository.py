@@ -1,8 +1,8 @@
 import inspect
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from pymongo import ASCENDING
+from pymongo import ASCENDING, DESCENDING
 
 from .base import BaseRepository
 
@@ -51,3 +51,34 @@ class StockBasicRepository(BaseRepository):
                 upserted += 1
 
         return {"matched": matched, "modified": modified, "upserted": upserted}
+
+    async def find_records(
+        self,
+        *,
+        symbol: Optional[str] = None,
+        exchange: Optional[str] = None,
+        industry: Optional[str] = None,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        filters: Dict[str, Any] = {}
+        if symbol:
+            filters["symbol"] = symbol
+        if exchange:
+            filters["exchange"] = exchange
+        if industry:
+            filters["industry"] = industry
+
+        cursor = self.collection.find(filters).sort(
+            [("symbol", ASCENDING), ("updated_at", DESCENDING)]
+        )
+        if limit > 0:
+            cursor = cursor.limit(limit)
+        fetch_size = limit if limit > 0 else 1000
+        return await cursor.to_list(length=fetch_size)
+
+    async def list_symbols(self, *, limit: int = 200) -> List[str]:
+        items = await self.collection.distinct("symbol")
+        symbols = sorted([item for item in items if item])
+        if limit > 0:
+            return symbols[:limit]
+        return symbols

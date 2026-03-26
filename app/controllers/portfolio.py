@@ -3,9 +3,9 @@ from fastapi import APIRouter, Depends, Query
 from app.core.deps import get_current_active_user, get_current_superuser, get_portfolio_service
 from app.models.portfolio import PortfolioOverview
 from app.models.user import User
-from app.services.frontend_state_service import PortfolioService
+from app.services.portfolio_service import PortfolioService
 
-router = APIRouter(prefix="/portfolio", tags=["投资组合"])
+router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
 
 @router.get("/overview", response_model=PortfolioOverview)

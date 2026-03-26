@@ -1,81 +1,97 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, Query
 
 from app.core.deps import (
-    get_stock_data_service,
+    get_raw_stock_data_query_service,
     require_permissions,
 )
-from app.models.stock_data import (
-    DataPushConfigResponse,
-    DataWriteSummary,
-    StockBasicBatch,
-    StockKlineBatch,
-)
+from app.models.stock_query import StockBasicQueryItem, StockKlineQueryItem
 from app.models.user import User
-from app.services.stock_data_service import StockDataService
+from app.services.raw_data_query_service import RawStockDataQueryService
 
-router = APIRouter(prefix="/stocks", tags=["数据接入"])
+router = APIRouter(prefix="/stocks", tags=["stocks"])
 
 
 @router.get(
-    "/targets",
-    response_model=DataPushConfigResponse,
-    summary="查看可用数据目标",
-    description="返回后端支持的股票基础/K线/指标推送目标及 JSON Schema 样例。",
-)
-async def list_stock_targets(
-    _: User = Depends(require_permissions(["stocks:read"])),
-    service: StockDataService = Depends(get_stock_data_service),
-) -> DataPushConfigResponse:
-    return service.describe_targets()
-
-
-@router.post(
     "/basic",
-    response_model=DataWriteSummary,
-    status_code=status.HTTP_200_OK,
-    summary="推送股票基础信息",
-    description="接受 AStock 等数据源整理后的股票基础资料，并保存到配置的数据库目标中。",
+    response_model=List[StockBasicQueryItem],
+    summary="Query stock basic records",
 )
-async def ingest_stock_basic(
-    payload: StockBasicBatch,
-    _: User = Depends(require_permissions(["stocks:write"])),
-    service: StockDataService = Depends(get_stock_data_service),
-) -> DataWriteSummary:
-    try:
-        return await service.ingest_basic(payload)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"股票基础数据格式错误: {exc}。请参考 /api/v1/stocks/targets 返回的 schema。",
-        ) from exc
-    except Exception as exc:  # pragma: no cover - defensive
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"写入股票基础数据失败: {exc}",
-        ) from exc
+async def list_stock_basics(
+    symbol: Optional[str] = Query(default=None),
+    industry: Optional[str] = Query(default=None),
+    exchange: Optional[str] = Query(default=None),
+    target: str = Query(default="primary"),
+    limit: int = Query(default=50, ge=1, le=500),
+    _: User = Depends(require_permissions(["stocks:read"])),
+    service: RawStockDataQueryService = Depends(get_raw_stock_data_query_service),
+) -> List[StockBasicQueryItem]:
+    records = await service.list_stock_basics(
+        target=target,
+        symbol=symbol,
+        industry=industry,
+        exchange=exchange,
+        limit=limit,
+    )
+    return [StockBasicQueryItem(**record) for record in records]
 
 
-@router.post(
+@router.get(
+    "/basic/symbols",
+    response_model=List[str],
+    summary="List available stock symbols from stock_basic",
+)
+async def list_basic_symbols(
+    target: str = Query(default="primary"),
+    limit: int = Query(default=200, ge=1, le=2000),
+    _: User = Depends(require_permissions(["stocks:read"])),
+    service: RawStockDataQueryService = Depends(get_raw_stock_data_query_service),
+) -> List[str]:
+    return await service.list_basic_symbols(target=target, limit=limit)
+
+
+@router.get(
     "/kline",
-    response_model=DataWriteSummary,
-    status_code=status.HTTP_200_OK,
-    summary="推送股票 K 线数据",
-    description="批量写入日线、周线、月线、分钟线等 K 线数据，支持自定义目标数据库。",
+    response_model=List[StockKlineQueryItem],
+    summary="Query raw stock kline records",
 )
-async def ingest_stock_kline(
-    payload: StockKlineBatch,
-    _: User = Depends(require_permissions(["stocks:write"])),
-    service: StockDataService = Depends(get_stock_data_service),
-) -> DataWriteSummary:
-    try:
-        return await service.ingest_kline(payload)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"K线数据格式错误: {exc}。请参考 /api/v1/stocks/targets 返回的 schema。",
-        ) from exc
-    except Exception as exc:  # pragma: no cover - defensive
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"写入 K 线数据失败: {exc}",
-        ) from exc
+async def list_stock_kline(
+    symbol: str = Query(...),
+    frequency: str = Query(...),
+    start: Optional[datetime] = Query(default=None),
+    end: Optional[datetime] = Query(default=None),
+    target: str = Query(default="primary"),
+    limit: int = Query(default=200, ge=1, le=2000),
+    _: User = Depends(require_permissions(["stocks:read"])),
+    service: RawStockDataQueryService = Depends(get_raw_stock_data_query_service),
+) -> List[StockKlineQueryItem]:
+    records = await service.list_stock_kline(
+        target=target,
+        symbol=symbol,
+        frequency=frequency,
+        start=start,
+        end=end,
+        limit=limit,
+    )
+    return [StockKlineQueryItem(**record) for record in records]
+
+
+@router.get(
+    "/kline/symbols",
+    response_model=List[str],
+    summary="List available stock symbols from stock_kline",
+)
+async def list_kline_symbols(
+    frequency: Optional[str] = Query(default=None),
+    target: str = Query(default="primary"),
+    limit: int = Query(default=200, ge=1, le=2000),
+    _: User = Depends(require_permissions(["stocks:read"])),
+    service: RawStockDataQueryService = Depends(get_raw_stock_data_query_service),
+) -> List[str]:
+    return await service.list_kline_symbols(
+        target=target,
+        frequency=frequency,
+        limit=limit,
+    )

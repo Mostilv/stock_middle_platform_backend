@@ -3,9 +3,9 @@ from fastapi import APIRouter, Depends, Query
 from app.core.deps import get_limitup_service, get_current_active_user
 from app.models.limitup import LimitUpOverview
 from app.models.user import User
-from app.services.frontend_state_service import LimitUpService
+from app.services.limitup_service import LimitUpService
 
-router = APIRouter(prefix="/limitup", tags=["涨停监控"])
+router = APIRouter(prefix="/limitup", tags=["limitup"])
 
 
 @router.get("/overview", response_model=LimitUpOverview)

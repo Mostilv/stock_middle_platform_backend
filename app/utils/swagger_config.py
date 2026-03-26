@@ -1,12 +1,9 @@
-"""
-Utility helpers for FastAPI's OpenAPI/Swagger configuration.
-"""
+"""Utility helpers for FastAPI OpenAPI and Swagger configuration."""
 
 from typing import Any, Dict, List
 
 from fastapi.openapi.utils import get_openapi
 
-# Keep the UI configuration compact and readable.
 SWAGGER_UI_CONFIG: Dict[str, Any] = {
     "defaultModelsExpandDepth": -1,
     "docExpansion": "none",
@@ -15,13 +12,19 @@ SWAGGER_UI_CONFIG: Dict[str, Any] = {
 }
 
 API_TAGS: List[Dict[str, str]] = [
-    {"name": "认证", "description": "登录与令牌管理"},
-    {"name": "用户管理", "description": "用户、角色与权限接口"},
-    {"name": "策略管理", "description": "量化策略维护与订阅"},
-    {"name": "指标数据", "description": "技术指标查询与推送"},
-    {"name": "数据接入", "description": "股票基础/K线/行情推送接口"},
-    {"name": "行业分析", "description": "行业动量与行业宽度等衍生指标"},
-    {"name": "系统监控", "description": "服务状态与健康检查"},
+    {"name": "auth", "description": "Authentication and token endpoints."},
+    {"name": "users", "description": "User, role and permission management."},
+    {"name": "strategies", "description": "Strategy management and subscriptions."},
+    {"name": "indicators", "description": "Indicator calculation and queries."},
+    {"name": "stocks", "description": "Raw stock basic and kline queries."},
+    {"name": "data", "description": "Data ingestion endpoints."},
+    {"name": "integrity", "description": "Stored market data integrity checks."},
+    {"name": "analytics", "description": "Industry and derived analytics."},
+    {"name": "account", "description": "Account and system settings."},
+    {"name": "market", "description": "Market snapshot endpoints."},
+    {"name": "limitup", "description": "Limit-up monitoring endpoints."},
+    {"name": "portfolio", "description": "Portfolio endpoints."},
+    {"name": "system", "description": "Service status and health endpoints."},
 ]
 
 SECURITY_SCHEMES: Dict[str, Any] = {
@@ -29,17 +32,20 @@ SECURITY_SCHEMES: Dict[str, Any] = {
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "在 Authorization 请求头中携带 Bearer {token}",
+        "description": "Send `Authorization: Bearer <token>`.",
     }
 }
 
 SERVERS: List[Dict[str, str]] = [
-    {"url": "http://localhost:8000", "description": "本地开发环境"},
+    {"url": "http://localhost:8000", "description": "Local development"},
 ]
 
 
 def get_custom_openapi(
-    app, title: str, version: str, description: str
+    app: Any,
+    title: str,
+    version: str,
+    description: str,
 ) -> Dict[str, Any]:
     if app.openapi_schema:
         return app.openapi_schema
@@ -50,7 +56,6 @@ def get_custom_openapi(
         description=description,
         routes=app.routes,
     )
-
     openapi_schema.setdefault("components", {})
     openapi_schema["components"]["securitySchemes"] = SECURITY_SCHEMES
     openapi_schema["tags"] = API_TAGS
