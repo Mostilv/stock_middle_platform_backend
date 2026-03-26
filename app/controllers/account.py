@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.core.deps import get_account_service, get_optional_active_user
+from app.core.deps import get_account_service, get_current_active_user
 from app.models.account import (
     AccountProfile,
     AccountProfileUpdate,
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/account", tags=["账户与系统设置"])
 
 @router.get("/profile", response_model=AccountProfile)
 async def get_profile(
-    current_user: User = Depends(get_optional_active_user),
+    current_user: User = Depends(get_current_active_user),
     service: AccountService = Depends(get_account_service),
 ):
     return await service.get_profile(current_user)
@@ -23,7 +23,7 @@ async def get_profile(
 @router.put("/profile", response_model=AccountProfile)
 async def update_profile(
     payload: AccountProfileUpdate,
-    current_user: User = Depends(get_optional_active_user),
+    current_user: User = Depends(get_current_active_user),
     service: AccountService = Depends(get_account_service),
 ):
     return await service.update_profile(current_user, payload)
@@ -32,7 +32,7 @@ async def update_profile(
 @router.post("/password")
 async def change_password(
     payload: PasswordChangeRequest,
-    current_user: User = Depends(get_optional_active_user),
+    current_user: User = Depends(get_current_active_user),
     service: AccountService = Depends(get_account_service),
 ):
     try:

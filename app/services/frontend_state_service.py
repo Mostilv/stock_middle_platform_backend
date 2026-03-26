@@ -124,19 +124,25 @@ class MarketDataService(BaseCollectionService):
     async def get_market_data(
         self, symbols: Optional[List[str]], history_days: int
     ) -> MarketDataResponse:
-        await self._ensure_seeded()
-        cursor = self.collection.find({} if not symbols else {"symbol": {"$in": symbols}})
-        docs = await cursor.to_list(length=None)
-
+        indices_col = db_manager.get_mongodb_collection("market_indices")
+        latest = await indices_col.find_one({"_id": "latest_indices"})
+        
         result: Dict[str, Dict] = {}
-        for doc in docs:
-            history = list(doc.get("history", []))
-            history_slice = history[-history_days:] if history_days else history
-            result[doc["symbol"]] = {
-                "current": float(doc.get("current", 0)),
-                "change": float(doc.get("change", 0)),
-                "history": history_slice,
-            }
+        if latest:
+            # Drop the _id field
+            source_data = {k: v for k, v in latest.items() if k != "_id"}
+            
+            for symbol, data in source_data.items():
+                if symbols and symbol not in symbols:
+                    continue
+                history = list(data.get("history", []))
+                history_slice = history[-history_days:] if history_days else history
+                result[symbol] = {
+                    "current": float(data.get("current", 0)),
+                    "change": float(data.get("change", 0)),
+                    "history": history_slice,
+                }
+
         # If specific symbols requested but missing, fill from defaults.
         if symbols:
             for symbol in symbols:
@@ -269,12 +275,78 @@ class LimitUpService(BaseCollectionService):
         )
 
     async def get_overview(self, date: Optional[str]) -> LimitUpOverview:
-        await self._ensure_seeded()
         target_date = date or _now_iso()
-        doc = await self.collection.find_one({"date": target_date})
-        if not doc:
+        pool_col = db_manager.get_mongodb_collection("limit_up_pool")
+        
+        # If no date specified, try to find the latest date available in the pool
+        if not date:
+            latest_doc = await pool_col.find_one({}, sort=[("date", -1)])
+            if latest_doc:
+                target_date = latest_doc["date"]
+
+        cursor = pool_col.find({"date": target_date})
+        stocks = await cursor.to_list(length=None)
+        
+        if not stocks:
+            # Fallback to default mock if db is completely empty
+            await self._ensure_seeded()
             doc = await self.collection.find_one({}) or self.DEFAULT_OVERVIEW
-        return LimitUpOverview.parse_obj(self._strip_id(doc))
+            return LimitUpOverview.parse_obj(self._strip_id(doc))
+            
+        # Group into ladders
+        ladders_map = {}
+        sectors_map = {}
+        for s in stocks:
+            days = s.get("limitUpDays", 1)
+            if days not in ladders_map:
+                ladders_map[days] = []
+            
+            stock_item = {
+                "name": s.get("name", ""),
+                "code": s.get("code", ""),
+                "time": s.get("firstLimitUpTime", "")[:5] if s.get("firstLimitUpTime") else "",
+                "price": s.get("price", 0),
+                "changePercent": s.get("changePercent", 0),
+                "volume1": round(s.get("limitUpFund", 0) / 10000, 2) if s.get("limitUpFund") else 0,
+                "volume2": 0,
+                "ratio1": 0,
+                "ratio2": 0,
+                "sectors": [s.get("industry")] if s.get("industry") else [],
+                "marketCap": round(s.get("marketCap", 0) / 100000000, 2) if s.get("marketCap") else 0,
+                "pe": 0,
+                "pb": 0,
+            }
+            ladders_map[days].append(stock_item)
+            
+            ind = s.get("industry", "未知")
+            if ind:
+                if ind not in sectors_map:
+                    sectors_map[ind] = {"count": 0, "value": 0}
+                sectors_map[ind]["count"] += 1
+                sectors_map[ind]["value"] += (s.get("amount", 0) / 10000)
+
+        ladders = []
+        for level in sorted(ladders_map.keys(), reverse=True):
+            ladders.append({
+                "level": level,
+                "count": len(ladders_map[level]),
+                "stocks": ladders_map[level]
+            })
+            
+        sectors = []
+        for name, data in sectors_map.items():
+            sectors.append({
+                "name": name,
+                "count": data["count"],
+                "value": int(data["value"])
+            })
+        sectors = sorted(sectors, key=lambda x: x["count"], reverse=True)[:10]
+        
+        return LimitUpOverview.parse_obj({
+            "date": target_date,
+            "sectors": sectors,
+            "ladders": ladders
+        })
 
 
 class PortfolioService(BaseCollectionService):
@@ -339,6 +411,25 @@ class PortfolioService(BaseCollectionService):
         doc = await self.collection.find_one({}) or self.DEFAULT_OVERVIEW
         return PortfolioOverview.parse_obj(self._strip_id(doc))
 
+    async def toggle_strategy_status(self, strategy_id: str, is_active: bool) -> None:
+        await self._ensure_seeded()
+        doc = await self.collection.find_one({})
+        if not doc:
+            return
+        
+        updated = False
+        strategies = doc.get("strategies", [])
+        for strat in strategies:
+            if strat.get("id") == strategy_id:
+                strat["status"] = "active" if is_active else "inactive"
+                updated = True
+                
+        if updated:
+            await self.collection.update_one(
+                {"_id": doc["_id"]},
+                {"$set": {"strategies": strategies, "updated_at": datetime.datetime.utcnow()}}
+            )
+
 
 class StrategySubscriptionService(BaseCollectionService):
     DEFAULT_STATE = {
@@ -379,6 +470,35 @@ class StrategySubscriptionService(BaseCollectionService):
         await self._ensure_seeded(username)
         doc = await self.collection.find_one({"username": username})
         state = (doc or {}).get("state") or self.DEFAULT_STATE
+        
+        # Cross reference with PortfolioService
+        portfolio_service = PortfolioService()
+        portfolio_overview = await portfolio_service.get_overview()
+        active_strategies = [s for s in portfolio_overview.strategies if s.status == "active"]
+        
+        # Build merged strategy list
+        existing_subs = {s["id"]: s for s in state.get("strategies", [])}
+        merged_strategies = []
+        for active in active_strategies:
+            if active.id in existing_subs:
+                merged_strategies.append(existing_subs[active.id])
+            else:
+                # Default map from Portfolio
+                merged_strategies.append({
+                    "id": active.id,
+                    "name": active.name,
+                    "summary": active.description or "基于基本面与量化的综合策略",
+                    "riskLevel": "中",
+                    "signalFrequency": "日内/收盘",
+                    "lastSignal": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
+                    "performance": 0.0,
+                    "subscribed": False,
+                    "channels": ["email"],
+                    "tags": ["系统推荐"],
+                    "subscribers": 1,
+                })
+        
+        state["strategies"] = merged_strategies
         return StrategySubscriptionState.parse_obj(state)
 
     async def set_subscribed(

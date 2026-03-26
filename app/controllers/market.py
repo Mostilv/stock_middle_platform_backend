@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.deps import get_market_data_service, get_optional_active_user
+from app.core.deps import get_market_data_service, get_current_active_user
 from app.models.market import MarketDataResponse
 from app.models.user import User
 from app.services.frontend_state_service import MarketDataService
@@ -23,7 +23,7 @@ async def get_market_data(
         description="指数名称标识列表，逗号分隔，如 shanghaiIndex,nasdaqIndex",
     ),
     historyDays: int = Query(5, ge=1, le=60, description="返回最近 N 日历史点位"),
-    _: User = Depends(get_optional_active_user),
+    _: User = Depends(get_current_active_user),
     service: MarketDataService = Depends(get_market_data_service),
 ):
     symbol_list = _parse_symbols(symbols)

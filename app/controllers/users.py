@@ -1,6 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from app.core.deps import get_optional_active_user, get_user_service
+from app.core.deps import get_current_superuser, get_user_service
 from app.services.user_service import UserService
 from app.models.user import User, UserCreate, UserUpdate
 from pydantic import BaseModel
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/users", tags=["用户管理"])
 @router.post("", response_model=User)
 async def create_user(
     payload: UserCreate,
-    _: User = Depends(get_optional_active_user),
+    _: User = Depends(get_current_superuser),
     user_service: UserService = Depends(get_user_service),
 ):
     try:
@@ -26,7 +26,7 @@ async def create_user(
 async def get_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
-    _: User = Depends(get_optional_active_user),
+    _: User = Depends(get_current_superuser),
     user_service: UserService = Depends(get_user_service),
 ):
     """获取用户列表"""
@@ -37,7 +37,7 @@ async def get_users(
 @router.get("/{user_id}", response_model=User)
 async def get_user(
     user_id: str,
-    _: User = Depends(get_optional_active_user),
+    _: User = Depends(get_current_superuser),
     user_service: UserService = Depends(get_user_service),
 ):
     """获取用户信息"""
@@ -53,7 +53,7 @@ async def get_user(
 async def update_user(
     user_id: str,
     user_update: UserUpdate,
-    _: User = Depends(get_optional_active_user),
+    _: User = Depends(get_current_superuser),
     user_service: UserService = Depends(get_user_service),
 ):
     """更新用户信息"""
@@ -73,7 +73,7 @@ async def update_user(
 @router.delete("/{user_id}")
 async def delete_user(
     user_id: str,
-    _: User = Depends(get_optional_active_user),
+    _: User = Depends(get_current_superuser),
     user_service: UserService = Depends(get_user_service),
 ):
     """删除用户"""
@@ -97,7 +97,7 @@ class PermissionsUpdate(BaseModel):
 async def add_user_roles(
     user_id: str,
     body: RolesUpdate,
-    _: User = Depends(get_optional_active_user),
+    _: User = Depends(get_current_superuser),
     user_service: UserService = Depends(get_user_service),
 ):
     return await user_service.add_roles(user_id, body.roles)
@@ -107,7 +107,7 @@ async def add_user_roles(
 async def remove_user_roles(
     user_id: str,
     body: RolesUpdate,
-    _: User = Depends(get_optional_active_user),
+    _: User = Depends(get_current_superuser),
     user_service: UserService = Depends(get_user_service),
 ):
     return await user_service.remove_roles(user_id, body.roles)
@@ -117,7 +117,7 @@ async def remove_user_roles(
 async def add_user_permissions(
     user_id: str,
     body: PermissionsUpdate,
-    _: User = Depends(get_optional_active_user),
+    _: User = Depends(get_current_superuser),
     user_service: UserService = Depends(get_user_service),
 ):
     return await user_service.add_permissions(user_id, body.permissions)
@@ -127,7 +127,7 @@ async def add_user_permissions(
 async def remove_user_permissions(
     user_id: str,
     body: PermissionsUpdate,
-    _: User = Depends(get_optional_active_user),
+    _: User = Depends(get_current_superuser),
     user_service: UserService = Depends(get_user_service),
 ):
     return await user_service.remove_permissions(user_id, body.permissions)

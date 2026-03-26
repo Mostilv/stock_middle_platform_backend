@@ -10,7 +10,8 @@ class Settings:
     description: str = config("APP_DESCRIPTION", default="股票数据分析与策略管理平台")
 
     mongodb_url: str = config("MONGODB_URL", default="mongodb://localhost:27017")
-    mongodb_db: str = config("MONGODB_DB", default="stock_platform")
+    use_mock_db: bool = config("USE_MOCK_DB", default=False, cast=bool)
+    mongodb_db: str = f"{config('MONGODB_DB', default='stock_platform')}_mock" if use_mock_db else config("MONGODB_DB", default="stock_platform")
 
     secret_key: str = config("SECRET_KEY", default="your-secret-key-here")
     algorithm: str = "HS256"

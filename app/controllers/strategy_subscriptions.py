@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from app.core.deps import get_optional_active_user, get_subscription_service
+from app.core.deps import get_current_active_user, get_subscription_service
 from app.models.subscription import StrategySubscriptionState
 from app.models.user import User
 from app.services.frontend_state_service import StrategySubscriptionService
@@ -21,7 +21,7 @@ class BlacklistUpdate(BaseModel):
 
 @router.get("/subscriptions", response_model=StrategySubscriptionState)
 async def list_subscriptions(
-    current_user: User = Depends(get_optional_active_user),
+    current_user: User = Depends(get_current_active_user),
     service: StrategySubscriptionService = Depends(get_subscription_service),
 ):
     return await service.get_state(current_user.username)
@@ -30,7 +30,7 @@ async def list_subscriptions(
 @router.post("/subscriptions")
 async def update_subscription(
     payload: SubscriptionUpdate,
-    current_user: User = Depends(get_optional_active_user),
+    current_user: User = Depends(get_current_active_user),
     service: StrategySubscriptionService = Depends(get_subscription_service),
 ):
     if not payload.strategyId:
@@ -46,7 +46,7 @@ async def update_subscription(
 @router.post("/subscriptions/blacklist")
 async def update_blacklist(
     payload: BlacklistUpdate,
-    current_user: User = Depends(get_optional_active_user),
+    current_user: User = Depends(get_current_active_user),
     service: StrategySubscriptionService = Depends(get_subscription_service),
 ):
     await service.update_blacklist(current_user.username, payload.blacklist)
